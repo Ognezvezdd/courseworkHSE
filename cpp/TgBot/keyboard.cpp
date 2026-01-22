@@ -5,27 +5,28 @@ using namespace std;
 
 string Keyboard::createMainMenu() {
     vector<vector<string>> buttons = {
-        {"Выбрать игру"},
-        {"Выбрать агента"},
-        {"Сделать ставку"},
-        //{"Статистика", "Баланс"},
-        //{"Помощь"}
+        {"🎮 Выбрать игру"},
+        {"🤖 Выбрать агента"},
+        {"💰 Сделать ставку"},
+        {"▶️ Начать игру"}
     };
     return createReplyKeyboard(buttons);
 }
 
 string Keyboard::createAgentsMenu() {
     vector<vector<string>> buttons = {
-        //агенты
+        {"🎲 Random (случайный)"},
+        {"🧠 Heuristic (умный)"},
+        {"🎯 QLearning (обучаемый)"},
+        {"🔙 Назад в меню"}
     };
     return createReplyKeyboard(buttons);
 }
 
 string Keyboard::createGamesMenu() {
     vector<vector<string>> buttons = {
-        //{"Шахматы", "Крестики-нолики", "Карты"},
-        //{"Кости", "Баскетбол", "Футбол"},
-        //{"Назад в меню"}
+        {"❌⭕ Крестики-нолики 5x5"},
+        {"🔙 Назад в меню"}
     };
     return createReplyKeyboard(buttons);
 }
@@ -34,18 +35,26 @@ string Keyboard::createBetsMenu() {
     vector<vector<string>> buttons = {
         {"10", "50", "100"},
         {"500", "1000", "5000"},
-        {"ВСЯ СТАВКА", "ИЗМЕНИТЬ СТАВКУ"},
-        {"Назад в меню"}
+        {"🔙 Назад в меню"}
     };
     return createReplyKeyboard(buttons);
 }
 
-string Keyboard::removeKeyboard() {
-    Json::Value replyMarkup;
-    replyMarkup["remove_keyboard"] = true;
-    
-    Json::StreamWriterBuilder writer;
-    return Json::writeString(writer, replyMarkup);
+string Keyboard::createPlayMenu() {
+    vector<vector<string>> buttons = {
+        {"🎲 Случайный противник"},
+        {"🧠 Против Heuristic"},
+        {"🎯 Против QLearning"},
+        {"🔙 Назад в меню"}
+    };
+    return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createBackMenu() {
+    vector<vector<string>> buttons = {
+        {"🔙 Назад в меню"}
+    };
+    return createReplyKeyboard(buttons);
 }
 
 string Keyboard::createReplyKeyboard(const vector<vector<string>>& buttons, bool resize) {
@@ -65,6 +74,14 @@ string Keyboard::createReplyKeyboard(const vector<vector<string>>& buttons, bool
     replyMarkup["keyboard"] = keyboard;
     replyMarkup["resize_keyboard"] = resize;
     replyMarkup["one_time_keyboard"] = false;
+    
+    Json::StreamWriterBuilder writer;
+    return Json::writeString(writer, replyMarkup);
+}
+
+string Keyboard::removeKeyboard() {
+    Json::Value replyMarkup;
+    replyMarkup["remove_keyboard"] = true;
     
     Json::StreamWriterBuilder writer;
     return Json::writeString(writer, replyMarkup);

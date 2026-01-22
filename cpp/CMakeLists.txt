@@ -12,9 +12,20 @@ add_compile_options(-Wall -Wextra -O2)
 set(SOURCES
     src/main.cpp
     src/bot.cpp
+    src/keyboard.cpp
+    src/config.cpp
+    src/game_manager.cpp
 )
 
 add_executable(tg_bot ${SOURCES})
 
-target_include_directories(tg_bot PRIVATE ${CURL_INCLUDE_DIRS} ${JSONCPP_INCLUDE_DIRS})
-target_link_libraries(tg_bot ${CURL_LIBRARIES} ${JSONCPP_LIBRARIES})
+target_include_directories(tg_bot PRIVATE 
+    ${CURL_INCLUDE_DIRS} 
+    ${JSONCPP_INCLUDE_DIRS}
+    include
+)
+
+target_link_libraries(tg_bot 
+    ${CURL_LIBRARIES} 
+    ${JSONCPP_LIBRARIES}
+)
