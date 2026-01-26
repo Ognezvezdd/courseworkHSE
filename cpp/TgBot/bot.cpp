@@ -1,9 +1,18 @@
 #include "bot.hpp"
 #include "keyboard.hpp"
+#include "game_manager.hpp"
 #include <curl/curl.h>
 #include <json/json.h>
 #include <iostream>
 #include <sstream>
+#include <algorithm>  // ДОБАВИТЬ ЭТУ СТРОКУ!
+#include <vector>     // ДОБАВИТЬ ЭТУ СТРОКУ!
+
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <unistd.h>
+#endif
 
 using namespace std;
 
@@ -12,7 +21,8 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
     return size * nmemb;
 }
 
-TelegramBot::TelegramBot(const string& token) : token_(token) {
+TelegramBot::TelegramBot(const string& token, GameManager& game_manager) 
+    : token_(token), game_manager_(game_manager) {
     base_url_ = "https://api.telegram.org/bot" + token + "/";
     curl_global_init(CURL_GLOBAL_DEFAULT);
 }
@@ -25,227 +35,169 @@ string TelegramBot::makeRequest(const string& method, const string& params) {
     CURL* curl = curl_easy_init();
     string response;
     
-    if (curl) {
-        string url = base_url_ + method;
-        
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            cerr << "CURL error: " << curl_easy_strerror(res) << endl;
-        }
-        
-        curl_easy_cleanup(curl);
+    if (!curl) {
+        return "";
     }
     
+    string url = base_url_ + method;
+    
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    
+    struct curl_slist* headers = NULL;
+    if (!params.empty()) {
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params.c_str());
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }
+    
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    
+    CURLcode res = curl_easy_perform(curl);  // Можно использовать (void)res; чтобы убрать warning
+    
+    if (headers) {
+        curl_slist_free_all(headers);
+    }
+    
+    curl_easy_cleanup(curl);
     return response;
 }
 
-void TelegramBot::sendMessage(int64_t chat_id, const string& text, const string& reply_markup) {
+void TelegramBot::sendMessage(int64_t chat_id, const string& text, const string& reply_markup, bool markdown) {
+    cout << "Отправка сообщения: " << text.substr(0, 50) << "..." << endl;
+    
     Json::Value params;
     params["chat_id"] = chat_id;
     params["text"] = text;
     
     if (!reply_markup.empty()) {
-        params["reply_markup"] = reply_markup;
+        Json::Value markup;
+        Json::Reader reader;
+        if (reader.parse(reply_markup, markup)) {
+            params["reply_markup"] = markup;
+        }
     }
     
     Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
     string json_params = Json::writeString(writer, params);
     
     makeRequest("sendMessage", json_params);
 }
 
-void TelegramBot::showMainMenu(int64_t chat_id, const string& username) {
-    string welcome = "🎮 *Добро пожаловать, " + username + "!*\n\n"
-                    "Выберите действие:\n\n"
-                    "*Выбрать игру* - выбор игры для ставки\n"
-                    "*Выбрать агента* - выбор агента для игры\n"
-                    "*Сделать ставку* - установить размер ставки\n"
-                    //"*Статистика* - ваша статистика\n"
-                    //"*Баланс* - текущий баланс\n"
-                    //"*Помощь* - как пользоваться ботом";
-    
-    sendMessage(chat_id, welcome, Keyboard::createMainMenu());
-    user_states_[chat_id] = "main_menu";
-}
-
-void TelegramBot::showAgentsMenu(int64_t chat_id) {
-    string agents_text = "*ВЫБОР АГЕНТА*\n\n"
-                        "Выберите агента для игры:\n\n"
-                        //пока не очев совсем тут, хз, что за агенты и что писать о них
-
-    sendMessage(chat_id, agents_text, Keyboard::createAgentsMenu());
-    user_states_[chat_id] = "choose_agent";
-}
-
-void TelegramBot::showGamesMenu(int64_t chat_id) {
-    string games_text = "🎮 *ВЫБОР ИГРЫ*\n\n"
-                       //надо понять, что за игры точно будут, поэтому пока
-                       //ничего писать не буду
-    
-    sendMessage(chat_id, games_text, Keyboard::createGamesMenu());
-    user_states_[chat_id] = "choose_game";
-}
-
-void TelegramBot::showBetsMenu(int64_t chat_id) {
-    string bets_text = "💰 *ВЫБОР СТАВКИ*\n\n"
-                      "Выберите размер ставки:\n\n"
-                      "• *10* - минимальная ставка\n"
-                      "• *50* - небольшая ставка\n"
-                      "• *100* - средняя ставка\n"
-                      "• *500* - высокая ставка\n"
-                      "• *1000* - очень высокая ставка\n"
-                      "• *5000* - максимальная ставка\n"
-                      "• *ВСЯ СТАВКА* - поставить всё\n"
-                      "• *ИЗМЕНИТЬ СТАВКУ* - ввести свою"; //тут под вопросом
-    
-    sendMessage(chat_id, bets_text, Keyboard::createBetsMenu());
-    user_states_[chat_id] = "choose_bet";
-}
-
-void TelegramBot::handleCommand(int64_t chat_id, const string& command, const string& username) {
-    if (command == "/start") {
-        showMainMenu(chat_id, username);
-    }
-    else if (command == "/help") {
-        string help_text = "*ПОМОЩЬ*\n\n"
-                          "*Как пользоваться ботом:*\n\n"
-                          "1. Начните с команды /start\n"
-                          "2. Выберите игру из меню \n"
-                          "3. Выберите агента \n"
-                          "4. Установите ставку \n"
-                          "5. Начните игру!\n\n"
-                          "*Команды:*\n"
-                          "/start - начать\n"
-                          "/help - помощь\n"
-                          "/menu - главное меню";
-        
-        sendMessage(chat_id, help_text, Keyboard::createMainMenu());
-    }
-    else if (command == "/menu") {
-        showMainMenu(chat_id, username);
-    }
-}
+// ... остальные функции (showMainMenu, showAgentsMenu и т.д.) без изменений ...
 
 void TelegramBot::handleMessage(int64_t chat_id, const string& text, const string& username) {
     cout << "Получено сообщение от " << username << ": " << text << endl;
 
-    if (text.rfind("/", 0) == 0) {
-        handleCommand(chat_id, text, username);
-        return;
-    }
-
-    if (text == "Выбрать игру") {
-        showGamesMenu(chat_id);
-    }
-    else if (text == "Выбрать агента") {
-        showAgentsMenu(chat_id);
-    }
-    else if (text == "Сделать ставку") {
-        showBetsMenu(chat_id);
-    }
-    /*
-    else if (text == "Статистика") {
-        string stats_text = "*ВАША СТАТИСТИКА*\n\n"
-                           "*Игр сыграно:* 0\n"
-                           "*Выиграно:* 0\n"
-                           "*Проиграно:* 0\n"
-                           "*Винрейт:* 0%\n"
-                           "*Лучшая игра:* -";
-        
-        sendMessage(chat_id, stats_text, Keyboard::createMainMenu());
-    }
-    else if (text == "Баланс") {
-        string balance_text = "*ВАШ БАЛАНС*\n\n"
-                             "*Текущий баланс:* 1000\n"
-                             "*Текущая ставка:* не установлена\n"
-                             "*Текущий агент:* не выбран\n"
-                             "*Текущая игра:* не выбрана";
-        
-        sendMessage(chat_id, balance_text, Keyboard::createMainMenu());
-    }
-    else if (text == "Помощь") {
-        handleCommand(chat_id, "/help", username);
-    }*/
+    // УБИРАЕМ проблемный код с find() или исправляем его:
+    static const vector<string> button_texts = {
+        "Выбрать игру", "Выбрать агента", "Сделать ставку", 
+        "Начать игру", "Назад в меню", "Крестики-нолики 5x5",
+        "Random (случайный)", "Heuristic (умный)", "QLearning (обучаемый)",
+        "10", "50", "100", "500", "1000"
+    };
     
-    // Обработка кнопок выбора агента
-    
-    
-    // Обработка кнопок выбора игры
-    
-    
-    // Обработка кнопок ставок
-    
-    // Обработка ввода суммы ставки
-    else if (user_states_[chat_id] == "enter_bet") {
-        try {
-            int bet = stoi(text);
-            if (bet >= 10 && bet <= 5000) {
-                string bet_response = "*СТАВКА УСТАНОВЛЕНА!*\n\n"
-                                     "Размер ставки: " + to_string(bet) + "\n\n"
-                                     "Теперь можно начинать игру!";
-                
-                sendMessage(chat_id, bet_response, Keyboard::createMainMenu());
-                user_states_[chat_id] = "main_menu";
-            }
-            else {
-                sendMessage(chat_id, "*ОШИБКА*\nСтавка должна быть от 10 до 5000!", Keyboard::createBetsMenu());
-            }
-        }
-        catch (...) {
-            sendMessage(chat_id, "*ОШИБКА*\nВведите число от 10 до 5000!", Keyboard::createBetsMenu());
+    // Простая проверка - это текст от кнопки?
+    bool is_button_text = false;
+    for (const auto& button_text : button_texts) {
+        if (text == button_text) {
+            is_button_text = true;
+            break;
         }
     }
-
-    else if (text == "Назад в меню") {
-        showMainMenu(chat_id, username);
+    
+    if (is_button_text) {
+        cout << "Нажата кнопка: " << text << endl;
     }
+    
+    // ... остальной код handleMessage без изменений ...
 }
 
 void TelegramBot::run() {
-    cout << "Бот запущен! Ожидание сообщений..." << endl;
+    cout << "✅ Бот запускается..." << endl;
     
-    int64_t last_update_id = 0;
+    // Начинаем с последнего известного update_id
+    int64_t last_update_id = 252622674;  // Установите найденное значение!
+    
+    cout << "🔄 Начинаем с update_id: " << last_update_id << endl;
+    cout << "🤖 Бот готов к работе! Ожидание сообщений..." << endl;
     
     while (true) {
-        string response = makeRequest("getUpdates", "offset=" + to_string(last_update_id + 1) + "&timeout=60");
-        
-        Json::Value root;
-        Json::CharReaderBuilder reader;
-        string errors;
-        istringstream response_stream(response);
-        
-        if (Json::parseFromStream(reader, response_stream, &root, &errors)) {
-            if (root["ok"].asBool()) {
-                const Json::Value& updates = root["result"];
+        try {
+            // Запрашиваем только НОВЫЕ сообщения
+            string request = "{\"offset\":" + to_string(last_update_id + 1) + 
+                           ",\"timeout\":30,\"limit\":10}";
+            
+            string response = makeRequest("getUpdates", request);
+            
+            Json::Value root;
+            Json::CharReaderBuilder reader;
+            string errors;
+            istringstream response_stream(response);
+            
+            if (!Json::parseFromStream(reader, response_stream, &root, &errors)) {
+                cerr << "❌ Ошибка парсинга JSON: " << errors << endl;
+                #ifdef _WIN32
+                    Sleep(2000);
+                #else
+                    sleep(2);
+                #endif
+                continue;
+            }
+            
+            if (!root["ok"].asBool()) {
+                cerr << "❌ Ошибка Telegram API" << endl;
+                #ifdef _WIN32
+                    Sleep(2000);
+                #else
+                    sleep(2);
+                #endif
+                continue;
+            }
+            
+            const Json::Value& updates = root["result"];  // ДОБАВЬТЕ 'const'
+            
+            if (updates.size() > 0) {
+                cout << "📥 Получено " << updates.size() << " сообщение(ий)" << endl;
+            }
+            
+            // Обрабатываем каждое сообщение
+            for (const auto& update : updates) {
+                int64_t update_id = update["update_id"].asInt64();
                 
-                for (const auto& update : updates) {
-                    last_update_id = update["update_id"].asInt64();
+                // ВАЖНО: обновляем last_update_id
+                last_update_id = update_id;
+                
+                if (update.isMember("message")) {
+                    const Json::Value& message = update["message"];
                     
-                    if (update.isMember("message")) {
-                        const Json::Value& message = update["message"];
-                        int64_t chat_id = message["chat"]["id"].asInt64();
-                        string text = message["text"].asString();
-                        
-                        string username = "игрок";
-                        if (message["chat"].isMember("username")) {
-                            username = message["chat"]["username"].asString();
-                        }
-                        else if (message["chat"].isMember("first_name")) {
-                            username = message["chat"]["first_name"].asString();
-                        }
-                        
-                        handleMessage(chat_id, text, username);
+                    if (!message.isMember("text")) {
+                        continue;
                     }
+                    
+                    int64_t chat_id = message["chat"]["id"].asInt64();
+                    string text = message["text"].asString();
+                    
+                    string username = "игрок";
+                    if (message["chat"].isMember("username")) {
+                        username = message["chat"]["username"].asString();
+                    }
+                    else if (message["chat"].isMember("first_name")) {
+                        username = message["chat"]["first_name"].asString();
+                    }
+                    
+                    cout << "👤 [" << username << "]: " << text << " (update_id: " << update_id << ")" << endl;
+                    
+                    handleMessage(chat_id, text, username);
                 }
             }
+            
+        } catch (const exception& e) {
+            cerr << "❌ Исключение: " << e.what() << endl;
         }
         
-        // Пауза между запросами
+        // Пауза
         #ifdef _WIN32
             Sleep(1000);
         #else

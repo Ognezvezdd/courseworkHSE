@@ -6,7 +6,7 @@
 #include <map>
 
 struct GameResult {
-    std::string winner;  // "X", "O", "draw"
+    std::string winner;  // "X", "O", "draw", "error"
     int steps;
     int bet_amount;
     int win_amount;
@@ -42,18 +42,6 @@ private:
     std::string script_path_;
     
     std::string executePythonScript(const std::vector<std::string>& args);
-    
-    // Состояния пользователей
-    std::map<int64_t, UserState> user_states_;
-};
-
-struct UserState {
-    std::string selected_game = "tic_tac_toe_5x5";
-    std::string selected_agent = "random";
-    std::string opponent_agent = "heuristic";
-    int bet_amount = 100;
-    int balance = 1000;
-    std::string current_state = "main_menu";
 };
 
 #endif

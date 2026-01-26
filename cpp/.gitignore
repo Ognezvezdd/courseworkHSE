@@ -1,0 +1,5 @@
+build/
+*.o
+*.out
+tg_bot
+.DS_Store

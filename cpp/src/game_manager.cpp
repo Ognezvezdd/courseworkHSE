@@ -4,6 +4,7 @@
 #include <array>
 #include <memory>
 #include <cstdio>
+#include <algorithm>  // Добавляем для std::remove, std::count
 #ifdef _WIN32
     #include <windows.h>
 #else
@@ -18,7 +19,6 @@ std::string GameManager::executePythonScript(const std::vector<std::string>& arg
     for (const auto& arg : args) {
         command += " " + arg;
     }
-    command += " --json";  // Всегда получаем JSON
     
     std::cout << "Executing: " << command << std::endl;
     
@@ -77,7 +77,7 @@ GameResult GameManager::runGame(
         return result;
     }
     
-    // Простой парсинг (можно заменить на полноценный JSON парсер)
+    // Простой парсинг
     size_t winner_pos = json_output.find("\"winner\"");
     if (winner_pos != std::string::npos) {
         size_t start = json_output.find(":", winner_pos) + 1;
@@ -87,23 +87,28 @@ GameResult GameManager::runGame(
         if (start != std::string::npos && end != std::string::npos) {
             std::string winner_value = json_output.substr(start, end - start);
             // Убираем кавычки и пробелы
-            winner_value.erase(std::remove(winner_value.begin(), winner_value.end(), '"'), winner_value.end());
+            winner_value.erase(std::remove(winner_value.begin(), winner_value.end(), '\"'), winner_value.end());
             winner_value.erase(std::remove(winner_value.begin(), winner_value.end(), ' '), winner_value.end());
             result.winner = winner_value;
         }
     }
     
-    // Подсчет шагов
-    size_t step_count = std::count(json_output.begin(), json_output.end(), '}') / 2;
-    result.steps = step_count;
+    // Подсчет шагов (упрощенный метод)
+    size_t step_count = 0;
+    for (char c : json_output) {
+        if (c == '}') step_count++;
+    }
+    result.steps = step_count / 2;
     
     // Расчет выигрыша
     if (result.winner == "X") {
         result.win_amount = result.bet_amount * 2;  // Выигрыш x2
+    } else if (result.winner == "O") {
+        result.win_amount = 0;  // Проигрыш
     } else if (result.winner == "draw") {
         result.win_amount = result.bet_amount;  // Возврат ставки
     } else {
-        result.win_amount = 0;  // Проигрыш
+        result.win_amount = 0;  // Ошибка или другое
     }
     
     return result;

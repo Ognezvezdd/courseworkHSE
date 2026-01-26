@@ -1,5 +1,5 @@
 {
-    "bot_token": "",
-    "python_path": "",
-    "game_script_path": ""
+    "bot_token": "8136569118:AAGkZK4wYGQULMDBB0q0S1t56HefH2Mjxj8",
+    "python_path": "/home/eduardade/courseworkHSE/python/venv/bin/python",
+    "game_script_path": "/home/eduardade/courseworkHSE/python/run_game.py"
 }
