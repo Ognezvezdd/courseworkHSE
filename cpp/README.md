@@ -1,6 +1,20 @@
 # Telegram Bot Client (C++)
 
-Клиентская часть проекта, реализованная на C++. Отвечает за взаимодействие с пользователем через Telegram, управление ставками и запуск игр.
+Клиентская часть проекта, реализованная на C++. Отвечает за взаимодействие с пользователем через Telegram, управление ставками и запуск игр **через REST API**.
+
+## Архитектура взаимодействия
+
+```
+Telegram User  ◀──▶  C++ Bot  ──HTTP API──▶  Python FastAPI  ──▶  AI Agents
+                       │                          │
+                       │                          │
+                  libcurl + JSON            Game Engine + ML
+```
+
+**Ключевые компоненты:**
+- `HttpClient`: HTTP клиент на основе libcurl для взаимодействия с API
+- `GameManager`: Менеджер игр, отправляющий запросы к Python API
+- `TelegramBot`: Обработчик Telegram команд и сообщений
 
 ## Возможности
 
@@ -51,21 +65,30 @@ make
 
 ## Конфигурация
 
-Перед запуском необходимо создать или отредактировать файл `config.json` в директории `cpp/` (или там, где запускается бинарный файл).
+Перед запуском необходимо создать или отредактировать файл `config.json` в директории `cpp/`.
 
 Пример `config.json`:
 
 ```json
 {
     "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
-    "python_path": "/usr/bin/python3",
-    "game_script_path": "/absolute/path/to/courseworkHSE/python/run_game.py"
+    "api_url": "http://localhost:8000"
 }
 ```
 
-- **bot_token**: Токен вашего бота, полученный от @BotFather.
-- **python_path**: Путь к интерпретатору Python (версия 3.10+).
-- **game_script_path**: Абсолютный путь к скрипту `run_game.py` в папке `python`.
+Для Docker:
+```json
+{
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "api_url": "http://python-api:8000"
+}
+```
+
+**Параметры:**
+- **bot_token**: Токен вашего бота, полученный от @BotFather в Telegram.
+- **api_url**: URL Python FastAPI сервиса.
+  - Локально: `http://localhost:8000`
+  - Docker: `http://python-api:8000`
 
 ## Запуск
 
@@ -78,10 +101,23 @@ make
 ## Структура кода
 
 - **`TgBot/`**: Логика бота.
-  - `main.cpp`: Точка входа.
+  - `main.cpp`: Точка входа, инициализация и проверка API.
   - `bot.cpp/hpp`: Класс `TelegramBot`, обработка сообщений и Long Polling.
   - `keyboard.cpp/hpp`: Генерация клавиатур для меню.
 - **`src/`**: Вспомогательные модули.
-  - `game_manager.cpp/hpp`: Класс для запуска Python-скриптов и парсинга результатов.
+  - `http_client.cpp/hpp`: HTTP клиент на основе libcurl для API запросов.
+  - `game_manager.cpp/hpp`: Менеджер игр, взаимодействие с Python API.
   - `user_state.hpp`: Структура состояния пользователя.
   - `config.cpp/hpp`: Загрузка конфигурации.
+
+## Зависимости между модулями
+
+```
+main.cpp
+  ├─▶ config.cpp        (загрузка конфигурации)
+  ├─▶ game_manager.cpp  (взаимодействие с API)
+  │     └─▶ http_client.cpp  (HTTP запросы)
+  └─▶ bot.cpp           (Telegram интерфейс)
+        └─▶ keyboard.cpp     (UI элементы)
+```
+

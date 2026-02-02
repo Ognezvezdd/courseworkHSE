@@ -1,0 +1,4 @@
+{
+    "bot_token": "YOUR_BOT_TOKEN_HERE",
+    "api_url": "http://python-api:8000"
+}

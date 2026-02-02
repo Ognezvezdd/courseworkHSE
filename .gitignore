@@ -1,3 +1,51 @@
+# IDE
 /.idea/**
-/python/venv/
 /.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+/python/venv/
+/python/__pycache__/
+/python/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# C++
+/cpp/build/
+/cpp/**/*.o
+/cpp/**/*.a
+*.so
+*.dylib
+*.exe
+
+# Config with sensitive data (keep config.json.example)
+cpp/config.json
+
+# Output files
+/python/output/**
+*.png
+*.jpg
+*.json
+!requirements.txt
+!package.json
+!config.json.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.orig

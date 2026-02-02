@@ -15,6 +15,7 @@ set(SOURCES
     TgBot/keyboard.cpp
     src/config.cpp
     src/game_manager.cpp
+    src/http_client.cpp
 )
 
 add_executable(tg_bot ${SOURCES})

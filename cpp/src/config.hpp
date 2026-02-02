@@ -4,11 +4,10 @@
 #include <string>
 
 struct Config {
-    std::string bot_token;
-    std::string python_path = "python";
-    std::string game_script_path = ""; // путь к скрипту
+  std::string bot_token;
+  std::string api_url = "http://python-api:8000"; // URL Python API
 };
 
-Config load_config(const std::string& filename = "config.json");
+Config load_config(const std::string &filename = "config.json");
 
 #endif

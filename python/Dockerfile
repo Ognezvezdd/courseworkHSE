@@ -25,5 +25,5 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Expose API port
 EXPOSE 8000
 
-# Команда по умолчанию — демонстрация
-CMD ["python", "run.py", "--agent-x", "heuristic", "--agent-o", "random", "--seed", "42"]
+# Запуск FastAPI сервера через uvicorn
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

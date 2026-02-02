@@ -1,0 +1,11 @@
+.git
+.gitignore
+.vscode
+.idea
+*.md
+build/
+*.o
+*.a
+*.so
+config.json
+.DS_Store

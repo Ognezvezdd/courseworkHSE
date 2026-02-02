@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Python API - Игровой движок
+  python-api:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: ai-agents-api
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - ai-platform
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      # Монтируем output для сохранения визуализаций
+      - ./python/output:/app/output
+      # Монтируем agents для сохранения обученных моделей
+      - ./python/agents:/app/agents
+
+  # C++ Telegram Bot - Клиентский интерфейс
+  telegram-bot:
+    build:
+      context: ./cpp
+      dockerfile: Dockerfile
+    container_name: ai-agents-bot
+    depends_on:
+      python-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ai-platform
+    environment:
+      - API_URL=http://python-api:8000
+    volumes:
+      # Монтируем config.json из хоста
+      - ./cpp/config.json:/app/config.json:ro
+    command: [ "./build/tg_bot" ]
+
+networks:
+  ai-platform:
+    driver: bridge

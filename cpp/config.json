@@ -1,4 +1,4 @@
+{
     "bot_token": "8136569118:AAGkZK4wYGQULMDBB0q0S1t56HefH2Mjxj8",
-    "python_path": "/usr/bin/python3",
-    "game_script_path": "/Users/max/Programming/PycharmProjects/courseworkHSE/python/run_game.py"
+    "api_url": "http://localhost:8000"
 }
