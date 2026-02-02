@@ -11,7 +11,9 @@ struct GameResult {
   int steps;
   int bet_amount;
   int win_amount;
-  std::string json_output; // Результат игры в JSON
+  std::string image_url;      // URL изображения с визуализацией
+  std::string image_filename; // Имя файла изображения
+  std::string json_output;    // Результат игры в JSON
 };
 
 /**

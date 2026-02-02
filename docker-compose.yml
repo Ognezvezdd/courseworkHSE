@@ -44,6 +44,8 @@ services:
     volumes:
       # Монтируем config.json из хоста
       - ./cpp/config.json:/app/config.json:ro
+      # Монтируем общую папку с изображениями (такую же как у python-api)
+      - ./python/output:/app/output:ro
     command: [ "./build/tg_bot" ]
 
 networks:

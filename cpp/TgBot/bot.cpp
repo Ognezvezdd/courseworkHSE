@@ -131,6 +131,90 @@ void TelegramBot::sendMessage(int64_t chat_id, const string &text,
   }
 }
 
+void TelegramBot::sendPhoto(int64_t chat_id, const string &photo_url,
+                            const string &caption) {
+  cout << "🖼️ Отправка фото в чат " << chat_id << ": " << photo_url << endl;
+
+  Json::Value params;
+  params["chat_id"] = chat_id;
+  params["photo"] = photo_url;
+  if (!caption.empty()) {
+    params["caption"] = caption;
+    params["parse_mode"] = "Markdown";
+  }
+
+  Json::StreamWriterBuilder writer;
+  writer["indentation"] = "";
+  string json_params = Json::writeString(writer, params);
+
+  makeRequest("sendPhoto", json_params);
+}
+
+void TelegramBot::uploadPhoto(int64_t chat_id, const string &file_path,
+                              const string &caption) {
+  cout << "📤 Загрузка фото в чат " << chat_id << ": " << file_path << endl;
+
+  CURL *curl = curl_easy_init();
+  if (!curl) {
+    cerr << "❌ Ошибка инициализации CURL для загрузки фото" << endl;
+    return;
+  }
+
+  string url = base_url_ + "sendPhoto";
+
+  curl_mime *mime = curl_mime_init(curl);
+  curl_mimepart *part;
+
+  // chat_id
+  part = curl_mime_addpart(mime);
+  curl_mime_name(part, "chat_id");
+  curl_mime_data(part, to_string(chat_id).c_str(), CURL_ZERO_TERMINATED);
+
+  // photo
+  part = curl_mime_addpart(mime);
+  curl_mime_name(part, "photo");
+  curl_mime_filedata(part, file_path.c_str());
+
+  // caption
+  if (!caption.empty()) {
+    part = curl_mime_addpart(mime);
+    curl_mime_name(part, "caption");
+    curl_mime_data(part, caption.c_str(), CURL_ZERO_TERMINATED);
+
+    part = curl_mime_addpart(mime);
+    curl_mime_name(part, "parse_mode");
+    curl_mime_data(part, "Markdown", CURL_ZERO_TERMINATED);
+  }
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+  string response;
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+  CURLcode res = curl_easy_perform(curl);
+
+  if (res != CURLE_OK) {
+    cerr << "❌ Ошибка CURL при загрузке фото: " << curl_easy_strerror(res)
+         << endl;
+  } else {
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (http_code != 200) {
+      cerr << "❌ Ошибка Telegram API при загрузке фото (код " << http_code
+           << "): " << response << endl;
+    } else {
+      cout << "✅ Фото успешно загружено!" << endl;
+    }
+  }
+
+  curl_mime_free(mime);
+  curl_easy_cleanup(curl);
+}
+
 void TelegramBot::showMainMenu(int64_t chat_id) {
   Keyboard keyboard;
   string menu_text = "🎮 *Главное меню*\n\n"
@@ -221,27 +305,124 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                 "🎲 Запуск игры: " + state.selected_agent + " vs Random...");
     GameResult result = game_manager_.runGame(state.selected_agent, "random",
                                               (int)time(nullptr));
-    string msg = "🏁 Победитель: " + result.winner +
-                 "\nШагов: " + to_string(result.steps);
-    sendMessage(chat_id, msg, Keyboard().createMainMenu());
+
+    stringstream ss;
+    ss << "🏁 *Игра завершена!*\n\n";
+    ss << "👤 Ваш агент (X): " << state.selected_agent << "\n";
+    ss << "🤖 Противник (O): Random\n";
+    ss << "🏆 Победитель: *" << result.winner << "*\n";
+    ss << "⏱ Шагов: " << result.steps << "\n\n";
+
+    if (result.winner == "X") {
+      ss << "💰 *ВЫ ВЫИГРАЛИ!* 🚀\n";
+      ss << "Вы получаете: " << (state.bet_amount * 2) << " очков";
+    } else if (result.winner == "O") {
+      ss << "💸 *ВЫ ПРОИГРАЛИ* 😢\n";
+      ss << "Удачи в следующий раз!";
+    } else {
+      ss << "🤝 *НИЧЬЯ*\n";
+      ss << "Ставка " << state.bet_amount << " возвращена";
+    }
+
+    if (!result.image_filename.empty()) {
+      string local_path = "output/" + result.image_filename;
+      // Проверяем разные возможные пути (Docker vs Local)
+      if (access(local_path.c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, local_path, ss.str());
+      } else if (access(("/app/" + local_path).c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, "/app/" + local_path, ss.str());
+      } else if (!result.image_url.empty()) {
+        sendPhoto(chat_id, result.image_url, ss.str());
+      } else {
+        sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+      }
+    } else if (!result.image_url.empty()) {
+      sendPhoto(chat_id, result.image_url, ss.str());
+    } else {
+      sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+    }
   } else if (text == "Против Heuristic") {
     state.opponent_agent = "heuristic";
     sendMessage(chat_id,
                 "🧠 Запуск игры: " + state.selected_agent + " vs Heuristic...");
     GameResult result = game_manager_.runGame(state.selected_agent, "heuristic",
                                               (int)time(nullptr));
-    string msg = "🏁 Победитель: " + result.winner +
-                 "\nШагов: " + to_string(result.steps);
-    sendMessage(chat_id, msg, Keyboard().createMainMenu());
+
+    stringstream ss;
+    ss << "🏁 *Игра завершена!*\n\n";
+    ss << "👤 Ваш агент (X): " << state.selected_agent << "\n";
+    ss << "🤖 Противник (O): Heuristic\n";
+    ss << "🏆 Победитель: *" << result.winner << "*\n";
+    ss << "⏱ Шагов: " << result.steps << "\n\n";
+
+    if (result.winner == "X") {
+      ss << "💰 *ВЫ ВЫИГРАЛИ!* 🚀\n";
+      ss << "Вы получаете: " << (state.bet_amount * 2) << " очков";
+    } else if (result.winner == "O") {
+      ss << "💸 *ВЫ ПРОИГРАЛИ* 😢\n";
+      ss << "Удачи в следующий раз!";
+    } else {
+      ss << "🤝 *НИЧЬЯ*\n";
+      ss << "Ставка " << state.bet_amount << " возвращена";
+    }
+
+    if (!result.image_filename.empty()) {
+      string local_path = "output/" + result.image_filename;
+      if (access(local_path.c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, local_path, ss.str());
+      } else if (access(("/app/" + local_path).c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, "/app/" + local_path, ss.str());
+      } else if (!result.image_url.empty()) {
+        sendPhoto(chat_id, result.image_url, ss.str());
+      } else {
+        sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+      }
+    } else if (!result.image_url.empty()) {
+      sendPhoto(chat_id, result.image_url, ss.str());
+    } else {
+      sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+    }
   } else if (text == "Против QLearning") {
     state.opponent_agent = "qlearning";
     sendMessage(chat_id,
                 "🤖 Запуск игры: " + state.selected_agent + " vs QLearning...");
     GameResult result = game_manager_.runGame(state.selected_agent, "qlearning",
                                               (int)time(nullptr));
-    string msg = "🏁 Победитель: " + result.winner +
-                 "\nШагов: " + to_string(result.steps);
-    sendMessage(chat_id, msg, Keyboard().createMainMenu());
+
+    stringstream ss;
+    ss << "🏁 *Игра завершена!*\n\n";
+    ss << "👤 Ваш агент (X): " << state.selected_agent << "\n";
+    ss << "🤖 Противник (O): QLearning\n";
+    ss << "🏆 Победитель: *" << result.winner << "*\n";
+    ss << "⏱ Шагов: " << result.steps << "\n\n";
+
+    if (result.winner == "X") {
+      ss << "💰 *ВЫ ВЫИГРАЛИ!* 🚀\n";
+      ss << "Вы получаете: " << (state.bet_amount * 2) << " очков";
+    } else if (result.winner == "O") {
+      ss << "💸 *ВЫ ПРОИГРАЛИ* 😢\n";
+      ss << "Удачи в следующий раз!";
+    } else {
+      ss << "🤝 *НИЧЬЯ*\n";
+      ss << "Ставка " << state.bet_amount << " возвращена";
+    }
+
+    if (!result.image_filename.empty()) {
+      string local_path = "output/" + result.image_filename;
+      if (access(local_path.c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, local_path, ss.str());
+      } else if (access(("/app/" + local_path).c_str(), F_OK) == 0) {
+        uploadPhoto(chat_id, "/app/" + local_path, ss.str());
+      } else if (!result.image_url.empty()) {
+        sendPhoto(chat_id, result.image_url, ss.str());
+      } else {
+        sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+      }
+    } else if (!result.image_url.empty()) {
+      sendPhoto(chat_id, result.image_url, ss.str());
+    } else {
+      sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
+    }
   } else {
     sendMessage(chat_id, "🤔 Неизвестная команда. Используйте меню:",
                 Keyboard().createMainMenu());

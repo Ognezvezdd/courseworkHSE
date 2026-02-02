@@ -18,6 +18,10 @@ private:
                           const std::string &params = "");
   void sendMessage(int64_t chat_id, const std::string &text,
                    const std::string &reply_markup = "", bool markdown = false);
+  void sendPhoto(int64_t chat_id, const std::string &photo_url,
+                 const std::string &caption = "");
+  void uploadPhoto(int64_t chat_id, const std::string &file_path,
+                   const std::string &caption = "");
 
   void handleMessage(int64_t chat_id, const std::string &text,
                      const std::string &username);

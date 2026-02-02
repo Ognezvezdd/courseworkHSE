@@ -63,6 +63,13 @@ GameResult GameManager::parseGameResponse(const std::string &json_response) {
   if (Json::parseFromStream(reader, ss, &root, &errors)) {
     result.winner = root.get("winner", "error").asString();
     result.steps = root.get("steps", 0).asInt();
+
+    // Извлекаем image_url и формируем полный путь
+    std::string relative_url = root.get("image_url", "").asString();
+    if (!relative_url.empty()) {
+      result.image_url = api_url_ + relative_url;
+    }
+    result.image_filename = root.get("image_filename", "").asString();
   } else {
     std::cerr << "Failed to parse game response JSON: " << errors << std::endl;
     result.winner = "error";

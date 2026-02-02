@@ -2,7 +2,12 @@
 import sys
 import os
 from typing import List, Optional, Dict, Any
+import time
+import uuid
+import matplotlib
+matplotlib.use('Agg')  # Set backend for headless environment
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # Add current directory to sys.path to ensure modules can be imported
@@ -13,12 +18,22 @@ from agents.qlearning_agent import QLearningAgent
 from agents.random_agent import RandomAgent
 from agents.base_agent import BaseAgent
 from game.engine import run_game
+from visualization.renderer import GameRenderer
+
+# Ensure output directory exists
+OUTPUT_DIR = "output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 app = FastAPI(
     title="AI Agents Platform API",
     description="API for running AI agents games and training",
     version="1.0.0"
 )
+
+# Mount static files for visualizations
+app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
+
+renderer = GameRenderer()
 
 AGENT_CLASSES = {
     "random": RandomAgent,
@@ -41,6 +56,8 @@ class GameResult(BaseModel):
     winner: str
     steps: int
     slides: List[Dict[str, Any]]
+    image_url: Optional[str] = None
+    image_filename: Optional[str] = None
 
 class TrainResult(BaseModel):
     success: bool
@@ -77,10 +94,23 @@ async def play_game(request: GameRequest):
     if not winner:
         winner = "draw"
         
+    # Generate summary image
+    img_filename = f"game_{uuid.uuid4().hex[:8]}.png"
+    img_path = os.path.join(OUTPUT_DIR, img_filename)
+    
+    try:
+        renderer.render_summary(slides, filepath=img_path)
+        image_url = f"/static/{img_filename}"
+    except Exception as e:
+        print(f"Error rendering image: {e}")
+        image_url = None
+        
     return GameResult(
         winner=winner,
         steps=len(slides),
-        slides=slides
+        slides=slides,
+        image_url=image_url,
+        image_filename=img_filename
     )
 
 @app.post("/train", response_model=TrainResult)
