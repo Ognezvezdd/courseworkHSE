@@ -13,7 +13,7 @@ def test_read_main():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"message": "AI Agents Platform API is running"}
-
+ 
 def test_get_agents():
     response = client.get("/agents")
     assert response.status_code == 200

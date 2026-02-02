@@ -98,6 +98,29 @@ python3 run.py --games 100
 python3 run.py --agent-x qlearning --train 1000 --seed 42
 ```
 
+### REST API Сервер
+
+Проект включает `api.py` для запуска в виде HTTP-сервиса (на базе FastAPI).
+
+```bash
+# Запуск сервера разработки
+uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
+
+Документация Swagger UI будет доступна по адресу: `http://localhost:8000/docs`.
+
+**Примеры запросов:**
+
+*   **POST /game/play**: Запустить игру
+    ```json
+    {
+      "agent_x": "heuristic",
+      "agent_o": "random",
+      "seed": 42
+    }
+    ```
+*   **GET /agents**: Получить список доступных агентов
+
 ### Программное использование
 
 ```python
