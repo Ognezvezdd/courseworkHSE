@@ -16,6 +16,8 @@ set(SOURCES
     src/config.cpp
     src/game_manager.cpp
     src/http_client.cpp
+    src/mafia_game.cpp
+    src/mafia_agent_proxy.cpp
 )
 
 add_executable(tg_bot ${SOURCES})
@@ -30,4 +32,5 @@ target_include_directories(tg_bot PRIVATE
 target_link_libraries(tg_bot 
     ${CURL_LIBRARIES} 
     ${JSONCPP_LIBRARIES}
+    pthread
 )

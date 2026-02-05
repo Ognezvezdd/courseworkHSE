@@ -12,6 +12,13 @@ public:
     static std::string createGamesMenu();
     static std::string createBetsMenu();
     static std::string createPlayMenu();
+    
+    // Меню для мафии
+    static std::string createMafiaMenu();
+    static std::string createMafiaAgentsMenu();
+    static std::string createMafiaSettingsMenu();
+    static std::string createMafiaPlayMenu();
+    
     static std::string createBackMenu();
     static std::string removeKeyboard();
 
@@ -21,4 +28,4 @@ private:
     static std::string createInlineKeyboard(const std::vector<std::vector<std::pair<std::string, std::string>>>& buttons);
 };
 
-#endif
+#endif // KEYBOARD_HPP

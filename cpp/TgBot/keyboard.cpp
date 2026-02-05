@@ -5,10 +5,10 @@ using namespace std;
 
 string Keyboard::createMainMenu() {
     vector<vector<string>> buttons = {
-        {"Выбрать игру"},
-        {"Выбрать агента"},
-        {"Сделать ставку"},
-        {"Начать игру"}
+        {"🎮 Крестики-нолики"},
+        {"🎭 Мафия"},
+        {"📊 Статистика"},
+        {"⚙️ Настройки"}
     };
     return createReplyKeyboard(buttons);
 }
@@ -26,6 +26,7 @@ string Keyboard::createAgentsMenu() {
 string Keyboard::createGamesMenu() {
     vector<vector<string>> buttons = {
         {"Крестики-нолики 5x5"},
+        {"🎭 Перейти к мафии"},
         {"Назад в меню"}
     };
     return createReplyKeyboard(buttons);
@@ -34,7 +35,7 @@ string Keyboard::createGamesMenu() {
 string Keyboard::createBetsMenu() {
     vector<vector<string>> buttons = {
         {"10", "50", "100"},
-        {"500", "1000"},
+        {"500", "1000", "5000"},
         {"Назад в меню"}
     };
     return createReplyKeyboard(buttons);
@@ -46,6 +47,47 @@ string Keyboard::createPlayMenu() {
         {"Против Heuristic"},
         {"Против QLearning"},
         {"Назад в меню"}
+    };
+    return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createMafiaMenu() {
+    vector<vector<string>> buttons = {
+        {"🎭 Начать игру в мафию"},
+        {"👥 Выбрать количество игроков"},
+        {"⚙️ Настройки мафии"},
+        {"📋 Правила мафии"},
+        {"Назад в главное меню"}
+    };
+    return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createMafiaAgentsMenu() {
+    vector<vector<string>> buttons = {
+        {"6 игроков", "7 игроков", "8 игроков"},
+        {"9 игроков", "10 игроков", "12 игроков"},
+        {"Случайное количество"},
+        {"Назад в меню мафии"}
+    };
+    return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createMafiaSettingsMenu() {
+    vector<vector<string>> buttons = {
+        {"💬 Включить чат", "🔇 Без чата"},
+        {"⚡ Быстрая игра", "🕐 Стандартная"},
+        {"🎲 Случайные роли", "⚖️ Сбалансированные"},
+        {"Назад в меню мафии"}
+    };
+    return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createMafiaPlayMenu() {
+    vector<vector<string>> buttons = {
+        {"▶️ Начать игру сейчас"},
+        {"👥 Выбрать своих агентов"},
+       {"💰 Сделать ставку"},
+        {"Назад в меню мафии"}
     };
     return createReplyKeyboard(buttons);
 }

@@ -2,9 +2,11 @@
 #define GAME_MANAGER_HPP
 
 #include "http_client.hpp"
+#include "mafia_game.hpp"
 #include <map>
 #include <string>
 #include <vector>
+#include <memory>
 
 struct GameResult {
   std::string winner; // "X", "O", "draw", "error"
@@ -14,6 +16,21 @@ struct GameResult {
   std::string image_url;      // URL изображения с визуализацией
   std::string image_filename; // Имя файла изображения
   std::string json_output;    // Результат игры в JSON
+};
+
+struct MafiaGameResult {
+  std::string winner;                      // "mafia", "citizens", "error"
+  std::vector<std::string> mafia_team;     // Состав мафии
+  std::vector<std::string> citizen_team;   // Состав мирных
+  std::vector<std::string> killed_players; // Убитые игроки по дням
+  std::vector<Mafia::ChatMessage> chat_log; // Полная история чата
+  std::vector<std::string> game_log;       // Подробный лог игры
+  int total_days;
+  int surviving_players;
+  std::string image_url;                   // URL итогового изображения
+  std::string json_output;                 // JSON для API
+  int bet_amount;
+  int win_amount;
 };
 
 /**
@@ -38,6 +55,19 @@ public:
                      int seed = 0);
 
   /**
+   * @brief Запуск игры в мафию
+   * @param agents Список агентов для игры (6-12 агентов)
+   * @param num_players Количество игроков
+   * @param bet_amount Размер ставки
+   * @param use_chat Использовать ли чат между агентами
+   * @return Результат игры в мафию
+   */
+  MafiaGameResult runMafiaGame(const std::vector<std::string>& agents, 
+                              int num_players = 6,
+                              int bet_amount = 100,
+                              bool use_chat = true);
+
+  /**
    * @brief Обучение агента через API
    * @param agent_type Тип агента (только qlearning)
    * @param episodes Количество эпизодов
@@ -54,7 +84,13 @@ public:
   std::vector<std::string> getAvailableAgents();
 
   /**
-   * @brief Получить список доступных игр (на будущее)
+   * @brief Получить список доступных агентов для мафии
+   * @return Список агентов
+   */
+  std::vector<std::string> getAvailableMafiaAgents();
+
+  /**
+   * @brief Получить список доступных игр
    * @return Список игр
    */
   static std::vector<std::string> getAvailableGames();
@@ -64,6 +100,13 @@ public:
    * @return true если API доступен
    */
   bool checkApiHealth();
+
+  /**
+   * @brief Получить историю чата игры в мафию (для отладки)
+   * @param game_id ID игры
+   * @return История чата
+   */
+  std::vector<Mafia::ChatMessage> getMafiaChatHistory(const std::string& game_id);
 
 private:
   std::string api_url_;
@@ -75,6 +118,21 @@ private:
    * @return Структура GameResult
    */
   GameResult parseGameResponse(const std::string &json_response);
+
+  /**
+   * @brief Парсинг JSON ответа игры в мафию
+   * @param json_response JSON строка
+   * @return Структура MafiaGameResult
+   */
+  MafiaGameResult parseMafiaResponse(const std::string &json_response);
+
+  /**
+   * @brief Создать агентов для игры в мафию
+   * @param agent_names Имена агентов
+   * @return Вектор агентов
+   */
+  std::vector<std::shared_ptr<Mafia::IMafiaAgent>> createMafiaAgents(
+      const std::vector<std::string>& agent_names);
 };
 
-#endif
+#endif // GAME_MANAGER_HPP
