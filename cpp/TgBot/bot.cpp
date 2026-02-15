@@ -6,9 +6,9 @@
 #include <curl/curl.h>
 #include <iostream>
 #include <json/json.h>
+#include <random>
 #include <sstream>
 #include <vector>
-#include <random>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -189,7 +189,7 @@ void TelegramBot::showMainMenu(int64_t chat_id) {
   Keyboard keyboard;
   string menu_text = "🎮 *Главное меню*\n\n"
                      "Выберите игру:";
-  
+
   sendMessage(chat_id, menu_text, keyboard.createMainMenu(), true);
 }
 
@@ -218,20 +218,20 @@ void TelegramBot::showMafiaMenu(int64_t chat_id) {
   string menu_text = "🎭 *Мафия*\n\n"
                      "Классическая социальная игра.\n"
                      "Агенты делятся на мафию и мирных жителей.";
-  
+
   sendMessage(chat_id, menu_text, keyboard.createMafiaMenu(), true);
 }
 
 void TelegramBot::showMafiaAgentsMenu(int64_t chat_id) {
   Keyboard keyboard;
-  sendMessage(chat_id, "👥 Выберите количество игроков (6-12):", 
+  sendMessage(chat_id, "👥 Выберите количество игроков (6-12):",
               keyboard.createMafiaAgentsMenu());
 }
 
 void TelegramBot::showMafiaSettingsMenu(int64_t chat_id) {
   Keyboard keyboard;
-  sendMessage(chat_id, "⚙️ Настройки игры в мафию:", 
-              keyboard.createMafiaSettingsMenu());
+  sendMessage(chat_id,
+              "⚙️ Настройки игры в мафию:", keyboard.createMafiaSettingsMenu());
 }
 
 void TelegramBot::showMafiaPlayMenu(int64_t chat_id) {
@@ -239,34 +239,33 @@ void TelegramBot::showMafiaPlayMenu(int64_t chat_id) {
   sendMessage(chat_id, "🎭 Настройки игры:", keyboard.createMafiaPlayMenu());
 }
 
-void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState& state) {
+void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
   if (state.selected_agent.empty()) {
-    sendMessage(chat_id, "⚠️ Сначала выберите агента!", 
+    sendMessage(chat_id, "⚠️ Сначала выберите агента!",
                 Keyboard().createAgentsMenu());
     return;
   }
-  
+
   if (state.bet_amount <= 0) {
-    sendMessage(chat_id, "⚠️ Сначала сделайте ставку!", 
+    sendMessage(chat_id, "⚠️ Сначала сделайте ставку!",
                 Keyboard().createBetsMenu());
     return;
   }
-  
-  sendMessage(chat_id, "🎲 Запуск игры: " + state.selected_agent + 
-              " vs " + state.opponent_agent + "...");
-  
-  GameResult result = game_manager_.runGame(state.selected_agent, 
-                                           state.opponent_agent,
-                                           (int)time(nullptr));
+
+  sendMessage(chat_id, "🎲 Запуск игры: " + state.selected_agent + " vs " +
+                           state.opponent_agent + "...");
+
+  GameResult result = game_manager_.runGame(
+      state.selected_agent, state.opponent_agent, (int)time(nullptr));
   result.bet_amount = state.bet_amount;
-  
+
   stringstream ss;
   ss << "🏁 *Игра завершена!*\n\n";
   ss << "👤 Ваш агент (X): " << state.selected_agent << "\n";
   ss << "🤖 Противник (O): " << state.opponent_agent << "\n";
   ss << "🏆 Победитель: *" << result.winner << "*\n";
   ss << "⏱ Шагов: " << result.steps << "\n\n";
-  
+
   if (result.winner == "X") {
     ss << "💰 *ВЫ ВЫИГРАЛИ!* 🚀\n";
     ss << "Вы получаете: " << (state.bet_amount * 2) << " очков";
@@ -277,7 +276,7 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState& state) {
     ss << "🤝 *НИЧЬЯ*\n";
     ss << "Ставка " << state.bet_amount << " возвращена";
   }
-  
+
   if (!result.image_filename.empty()) {
     string local_path = "output/" + result.image_filename;
     if (access(local_path.c_str(), F_OK) == 0) {
@@ -296,30 +295,52 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState& state) {
   }
 }
 
-void TelegramBot::handleMafiaGame(int64_t chat_id, UserState& state) {
+void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
+  cout << "🎭 Attempting to start Mafia game. Bet: " << state.bet_amount
+       << ", Players: " << state.mafia_players << endl;
+
   if (state.bet_amount <= 0) {
-    sendMessage(chat_id, "⚠️ Сначала сделайте ставку для игры в мафию!", 
-                Keyboard().createBetsMenu());
+    sendMessage(chat_id, "⚠️ Сначала сделайте ставку для игры в мафию!",
+                Keyboard::createBetsMenu());
     return;
   }
-  
-  sendMessage(chat_id, "🎭 Запускаю игру в мафию с " + 
-              to_string(state.mafia_players) + " агентами...\n"
-              "Это может занять несколько минут...");
-  
-  auto agents = game_manager_.getAvailableMafiaAgents();
-  MafiaGameResult result = game_manager_.runMafiaGame(agents, state.mafia_players, 
-                                                     state.bet_amount, true);
-  
-  formatMafiaResult(chat_id, result, state.bet_amount);
+
+  sendMessage(chat_id, "🎭 Запускаю игру в мафию с " +
+                           to_string(state.mafia_players) +
+                           " агентами...\n"
+                           "Это может занять несколько минут...");
+
+  try {
+    auto agents = game_manager_.getAvailableMafiaAgents();
+    if (agents.empty()) {
+      sendMessage(chat_id, "❌ Ошибка: список агентов пуст! Попробуйте позже.",
+                  Keyboard::createMafiaMenu());
+      return;
+    }
+
+    MafiaGameResult result = game_manager_.runMafiaGame(
+        agents, state.mafia_players, state.bet_amount, true);
+
+    formatMafiaResult(chat_id, result, state.bet_amount);
+  } catch (const std::exception &e) {
+    cerr << "❌ Exception in handleMafiaGame: " << e.what() << endl;
+    sendMessage(chat_id,
+                "❌ Произошла ошибка при запуске игры: " + string(e.what()),
+                Keyboard::createMafiaMenu());
+  } catch (...) {
+    cerr << "❌ Unknown exception in handleMafiaGame" << endl;
+    sendMessage(chat_id, "❌ Произошла критическая ошибка при запуске игры.",
+                Keyboard::createMafiaMenu());
+  }
 }
 
-void TelegramBot::formatMafiaResult(int64_t chat_id, const MafiaGameResult& result, 
-                                   int bet_amount) {
+void TelegramBot::formatMafiaResult(int64_t chat_id,
+                                    const MafiaGameResult &result,
+                                    int bet_amount) {
   stringstream ss;
   ss << "🎭 *Игра в мафию завершена!*\n\n";
   ss << "🏆 Победитель: *";
-  
+
   if (result.winner == "citizens") {
     ss << "МИРНЫЕ ЖИТЕЛИ* 🎉\n";
     ss << "💰 Выигрыш: " << result.win_amount << " очков (ставка x3)\n";
@@ -329,58 +350,60 @@ void TelegramBot::formatMafiaResult(int64_t chat_id, const MafiaGameResult& resu
   } else {
     ss << "ОШИБКА*\n";
   }
-  
+
   ss << "\n📊 Статистика:\n";
   ss << "• Дней игры: " << result.total_days << "\n";
   ss << "• Выжило игроков: " << result.surviving_players << "\n";
-  ss << "• Всего игроков: " << (result.mafia_team.size() + result.citizen_team.size()) << "\n";
-  
+  ss << "• Всего игроков: "
+     << (result.mafia_team.size() + result.citizen_team.size()) << "\n";
+
   ss << "\n👥 Состав мафии:\n";
-  for (const auto& mafia : result.mafia_team) {
+  for (const auto &mafia : result.mafia_team) {
     ss << "• " << mafia << "\n";
   }
-  
+
   ss << "\n👥 Мирные жители:\n";
-  for (const auto& citizen : result.citizen_team) {
+  for (const auto &citizen : result.citizen_team) {
     ss << "• " << citizen << "\n";
   }
-  
+
   if (!result.killed_players.empty()) {
     ss << "\n⚰️ Убитые игроки:\n";
-    for (const auto& killed : result.killed_players) {
+    for (const auto &killed : result.killed_players) {
       if (ss.str().length() + killed.length() < 4000) {
         ss << "• " << killed << "\n";
       }
     }
   }
-  
+
   // Отправляем результат
   sendMessage(chat_id, ss.str(), Keyboard().createMainMenu(), true);
-  
+
   // Отправляем лог чата, если есть
   if (!result.chat_log.empty()) {
     sendMafiaChatLog(chat_id, result.chat_log);
   }
-  
+
   // Отправляем изображение, если есть
   if (!result.image_url.empty()) {
     sendPhoto(chat_id, result.image_url, "🎭 Визуализация игры в мафию");
   }
 }
 
-void TelegramBot::sendMafiaChatLog(int64_t chat_id, const std::vector<Mafia::ChatMessage>& chat_log) {
+void TelegramBot::sendMafiaChatLog(
+    int64_t chat_id, const std::vector<Mafia::ChatMessage> &chat_log) {
   stringstream ss;
   ss << "💬 *Лог чата мафии:*\n\n";
-  
+
   int count = 0;
-  for (const auto& msg : chat_log) {
+  for (const auto &msg : chat_log) {
     if (msg.is_public && count < 20) { // Ограничиваем количество сообщений
       string time_of_day = msg.is_night ? "🌙" : "☀️";
       ss << time_of_day << " " << msg.player_name << ": " << msg.text << "\n";
       count++;
     }
   }
-  
+
   if (count > 0) {
     sendMessage(chat_id, ss.str(), "", true);
   }
@@ -398,24 +421,23 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
   // Основные команды
   if (text == "/start" || text == "Назад в главное меню" || text == "/menu") {
     showMainMenu(chat_id);
-  } 
+  }
   // Главное меню
   else if (text == "🎮 Крестики-нолики") {
     state.game_mode = "tic_tac_toe";
     showGamesMenu(chat_id);
-  } 
-  else if (text == "🎭 Мафия") {
+  } else if (text == "🎭 Мафия") {
     state.game_mode = "mafia";
     showMafiaMenu(chat_id);
   }
   // Меню крестиков-ноликов
   else if (text == "Крестики-нолики 5x5") {
     state.selected_game = "tic_tac_toe_5x5";
-    sendMessage(chat_id, "✅ Выбрана игра: Крестики-нолики 5x5\n"
+    sendMessage(chat_id,
+                "✅ Выбрана игра: Крестики-нолики 5x5\n"
                 "Теперь выберите агента и сделайте ставку.",
                 Keyboard().createMainMenu());
-  }
-  else if (text == "🎭 Перейти к мафии") {
+  } else if (text == "🎭 Перейти к мафии") {
     state.game_mode = "mafia";
     showMafiaMenu(chat_id);
   }
@@ -424,48 +446,46 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
     state.selected_agent = "random";
     sendMessage(chat_id, "✅ Выбран агент: Random",
                 Keyboard().createMainMenu());
-  }
-  else if (text == "Heuristic (умный)") {
+  } else if (text == "Heuristic (умный)") {
     state.selected_agent = "heuristic";
     sendMessage(chat_id, "✅ Выбран агент: Heuristic",
                 Keyboard().createMainMenu());
-  }
-  else if (text == "QLearning (обучаемый)") {
+  } else if (text == "QLearning (обучаемый)") {
     state.selected_agent = "qlearning";
     sendMessage(chat_id, "✅ Выбран агент: QLearning",
                 Keyboard().createMainMenu());
   }
   // Ставки
-  else if (text == "10" || text == "50" || text == "100" || 
-           text == "500" || text == "1000" || text == "5000") {
+  else if (text == "10" || text == "50" || text == "100" || text == "500" ||
+           text == "1000" || text == "5000") {
     state.bet_amount = stoi(text);
-    sendMessage(chat_id, "✅ Установлена ставка: " + text + " очков",
-                Keyboard().createMainMenu());
+    string response = "✅ Установлена ставка: " + text + " очков";
+
+    if (state.game_mode == "mafia") {
+      sendMessage(chat_id, response, Keyboard::createMafiaMenu());
+    } else {
+      sendMessage(chat_id, response, Keyboard::createGamesMenu());
+    }
   }
   // Оппоненты для крестиков-ноликов
   else if (text == "Случайный противник") {
     state.opponent_agent = "random";
     handleTicTacToeGame(chat_id, state);
-  }
-  else if (text == "Против Heuristic") {
+  } else if (text == "Против Heuristic") {
     state.opponent_agent = "heuristic";
     handleTicTacToeGame(chat_id, state);
-  }
-  else if (text == "Против QLearning") {
+  } else if (text == "Против QLearning") {
     state.opponent_agent = "qlearning";
     handleTicTacToeGame(chat_id, state);
   }
   // Меню мафии
   else if (text == "🎭 Начать игру в мафию") {
     showMafiaPlayMenu(chat_id);
-  }
-  else if (text == "👥 Выбрать количество игроков") {
+  } else if (text == "👥 Выбрать количество игроков") {
     showMafiaAgentsMenu(chat_id);
-  }
-  else if (text == "⚙️ Настройки мафии") {
+  } else if (text == "⚙️ Настройки мафии") {
     showMafiaSettingsMenu(chat_id);
-  }
-  else if (text == "📋 Правила мафии") {
+  } else if (text == "📋 Правила мафии") {
     string rules = "🎭 *Правила Мафии:*\n\n"
                    "• Играют 6-12 агентов\n"
                    "• Роли: Мафия, Дон, Шериф, Доктор, Мирные\n"
@@ -478,35 +498,34 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
   }
   // Выбор количества игроков для мафии
   else if (text == "6 игроков" || text == "7 игроков" || text == "8 игроков" ||
-           text == "9 игроков" || text == "10 игроков" || text == "12 игроков") {
+           text == "9 игроков" || text == "10 игроков" ||
+           text == "12 игроков") {
     state.mafia_players = stoi(text.substr(0, text.find(' ')));
     sendMessage(chat_id, "✅ Выбрано " + text + " для игры в мафию",
                 Keyboard().createMafiaMenu());
-  }
-  else if (text == "Случайное количество") {
+  } else if (text == "Случайное количество") {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(6, 12);
     state.mafia_players = dis(gen);
-    sendMessage(chat_id, "✅ Случайно выбрано " + to_string(state.mafia_players) + " игроков",
+    sendMessage(chat_id,
+                "✅ Случайно выбрано " + to_string(state.mafia_players) +
+                    " игроков",
                 Keyboard().createMafiaMenu());
   }
   // Настройки мафии
   else if (text == "▶️ Начать игру сейчас") {
     handleMafiaGame(chat_id, state);
-  }
-  else if (text == "👥 Выбрать своих агентов") {
+  } else if (text == "👥 Выбрать своих агентов") {
     sendMessage(chat_id, "⏳ Эта функция в разработке...",
                 Keyboard().createMafiaMenu());
-  }
-  else if (text == "💰 Сделать ставку") {
+  } else if (text == "💰 Сделать ставку") {
     showBetsMenu(chat_id);
   }
   // Назад
   else if (text == "Назад в меню мафии") {
     showMafiaMenu(chat_id);
-  }
-  else if (text == "Назад в меню") {
+  } else if (text == "Назад в меню") {
     if (state.game_mode == "mafia") {
       showMafiaMenu(chat_id);
     } else {

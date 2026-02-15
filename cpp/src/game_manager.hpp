@@ -4,33 +4,35 @@
 #include "http_client.hpp"
 #include "mafia_game.hpp"
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 struct GameResult {
-  std::string winner; // "X", "O", "draw", "error"
-  int steps;
-  int bet_amount;
-  int win_amount;
-  std::string image_url;      // URL изображения с визуализацией
-  std::string image_filename; // Имя файла изображения
-  std::string json_output;    // Результат игры в JSON
+  std::string winner = "error";
+  int steps = 0;
+  int bet_amount = 0;
+  int win_amount = 0;
+  std::string board_state = "";
+  std::string image_url = "";
+  std::string image_filename = "";
+  std::string json_output = "";
+  std::vector<std::string> game_log;
 };
 
 struct MafiaGameResult {
-  std::string winner;                      // "mafia", "citizens", "error"
-  std::vector<std::string> mafia_team;     // Состав мафии
-  std::vector<std::string> citizen_team;   // Состав мирных
-  std::vector<std::string> killed_players; // Убитые игроки по дням
-  std::vector<Mafia::ChatMessage> chat_log; // Полная история чата
-  std::vector<std::string> game_log;       // Подробный лог игры
-  int total_days;
-  int surviving_players;
-  std::string image_url;                   // URL итогового изображения
-  std::string json_output;                 // JSON для API
-  int bet_amount;
-  int win_amount;
+  std::string winner = "error";
+  std::vector<std::string> mafia_team;
+  std::vector<std::string> citizen_team;
+  std::vector<std::string> killed_players;
+  std::vector<Mafia::ChatMessage> chat_log;
+  std::vector<std::string> game_log;
+  int total_days = 0;
+  int surviving_players = 0;
+  std::string image_url = "";   // URL итогового изображения
+  std::string json_output = ""; // JSON для API
+  int bet_amount = 0;
+  int win_amount = 0;
 };
 
 /**
@@ -62,10 +64,9 @@ public:
    * @param use_chat Использовать ли чат между агентами
    * @return Результат игры в мафию
    */
-  MafiaGameResult runMafiaGame(const std::vector<std::string>& agents, 
-                              int num_players = 6,
-                              int bet_amount = 100,
-                              bool use_chat = true);
+  MafiaGameResult runMafiaGame(const std::vector<std::string> &agents,
+                               int num_players = 6, int bet_amount = 100,
+                               bool use_chat = true);
 
   /**
    * @brief Обучение агента через API
@@ -106,7 +107,8 @@ public:
    * @param game_id ID игры
    * @return История чата
    */
-  std::vector<Mafia::ChatMessage> getMafiaChatHistory(const std::string& game_id);
+  std::vector<Mafia::ChatMessage>
+  getMafiaChatHistory(const std::string &game_id);
 
 private:
   std::string api_url_;
@@ -131,8 +133,8 @@ private:
    * @param agent_names Имена агентов
    * @return Вектор агентов
    */
-  std::vector<std::shared_ptr<Mafia::IMafiaAgent>> createMafiaAgents(
-      const std::vector<std::string>& agent_names);
+  std::vector<std::shared_ptr<Mafia::IMafiaAgent>>
+  createMafiaAgents(const std::vector<std::string> &agent_names);
 };
 
 #endif // GAME_MANAGER_HPP

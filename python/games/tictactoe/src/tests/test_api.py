@@ -5,7 +5,7 @@ import os
 # Add the project root to sys.path to ensure we can import 'api' and other modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from api import app
+from games.tictactoe.src.api import app
 
 client = TestClient(app)
 

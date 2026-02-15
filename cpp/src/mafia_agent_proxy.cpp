@@ -122,6 +122,9 @@ MafiaAgentProxy::getAction(const std::vector<Player> &players,
 
   if (Json::parseFromStream(reader, ss, &root, &errors)) {
     std::string action_str = root.get("action_type", "pass").asString();
+    // Приводим к нижнему регистру для надежности
+    std::transform(action_str.begin(), action_str.end(), action_str.begin(),
+                   ::tolower);
     int target_id = root.get("target_id", -1).asInt();
 
     PlayerAction::Type action_type = PlayerAction::Type::PASS;
@@ -136,22 +139,62 @@ MafiaAgentProxy::getAction(const std::vector<Player> &players,
       action_type = PlayerAction::Type::DOCTOR_HEAL;
     else if (action_str == "don_check")
       action_type = PlayerAction::Type::DON_CHECK;
+    else if (action_str == "chat_message")
+      action_type = PlayerAction::Type::CHAT_MESSAGE;
 
-    return PlayerAction(action_type, target_id);
+    return PlayerAction(action_type, target_id,
+                        root.get("text_message", "").asString());
   }
 
   return PlayerAction(PlayerAction::Type::PASS);
 }
 
-std::string MafiaAgentProxy::getChatMessage(
-    const std::vector<Player> & /*players*/,
-    const std::vector<ChatMessage> & /*chat_history*/, Phase current_phase) {
-
+std::string
+MafiaAgentProxy::getChatMessage(const std::vector<Player> &players,
+                                const std::vector<ChatMessage> &chat_history,
+                                Phase current_phase,
+                                const std::vector<std::string> &known_info) {
   // Формируем JSON запрос для получения сообщения
   Json::Value request;
   request["agent_name"] = name_;
   request["phase"] = static_cast<int>(current_phase);
   request["role"] = RoleUtils::roleToString(role_);
+
+  // Информация об игроках
+  Json::Value players_json(Json::arrayValue);
+  for (const auto &player : players) {
+    Json::Value p;
+    p["id"] = player.id;
+    p["name"] = player.name;
+    p["role"] = RoleUtils::roleToString(player.role);
+    p["is_alive"] = player.is_alive;
+    p["is_protected"] = player.is_protected;
+    p["votes_against"] = player.votes_against;
+    players_json.append(p);
+  }
+  request["players"] = players_json;
+
+  // История чата
+  Json::Value chat_json(Json::arrayValue);
+  for (const auto &msg : chat_history) {
+    Json::Value m;
+    m["player_id"] = msg.player_id;
+    m["player_name"] = msg.player_name;
+    m["player_role"] = msg.player_role;
+    m["text"] = msg.text;
+    m["timestamp"] = msg.timestamp;
+    m["is_night"] = msg.is_night;
+    m["is_public"] = msg.is_public;
+    chat_json.append(m);
+  }
+  request["chat_history"] = chat_json;
+
+  // Известная информация
+  Json::Value known_info_json(Json::arrayValue);
+  for (const auto &info : known_info) {
+    known_info_json.append(info);
+  }
+  request["known_info"] = known_info_json;
 
   // Отправляем запрос
   Json::StreamWriterBuilder writer;
@@ -203,15 +246,14 @@ void MafiaAgentProxy::updateKnowledge(const std::string &info) {
 
 std::string MafiaAgentProxy::sendRequestToAPI(const std::string &endpoint,
                                               const std::string &json_data) {
-  std::cout << "🌐 MafiaAgentProxy: Sending POST to " << api_url_ + endpoint
-            << std::endl;
-  // std::cout << "Data: " << json_data << std::endl; // Uncomment for debug
-
   try {
     std::string response = http_client_->post(api_url_ + endpoint, json_data);
     if (http_client_->getLastResponseCode() != 200) {
       std::cerr << "❌ API Error: " << http_client_->getLastResponseCode()
-                << std::endl;
+                << " for " << endpoint << std::endl;
+      if (!response.empty()) {
+        std::cerr << "Response Body: " << response << std::endl;
+      }
       return "";
     }
     return response;

@@ -23,9 +23,11 @@ public:
                          Phase current_phase,
                          const std::vector<std::string> &known_info) override;
 
-  std::string getChatMessage(const std::vector<Player> &players,
-                             const std::vector<ChatMessage> &chat_history,
-                             Phase current_phase) override;
+  std::string
+  getChatMessage(const std::vector<Player> &players,
+                 const std::vector<ChatMessage> &chat_history,
+                 Phase current_phase,
+                 const std::vector<std::string> &known_info) override;
 
   std::string getName() const override { return name_; }
   Role getRole() const override { return role_; }

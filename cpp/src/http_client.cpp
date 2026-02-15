@@ -32,23 +32,21 @@ std::string HttpClient::get(const std::string &url) {
   std::string response;
 
   if (!curl_) {
-    std::cerr << "CURL not initialized!" << std::endl;
     return "";
   }
 
+  curl_easy_reset(curl_); // Сбрасываем для нового запроса
   curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl_, CURLOPT_TIMEOUT, 30L);
+  curl_easy_setopt(curl_, CURLOPT_TIMEOUT, 10L);
 
   CURLcode res = curl_easy_perform(curl_);
+  curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &last_response_code_);
 
   if (res != CURLE_OK) {
-    std::cerr << "GET request failed: " << curl_easy_strerror(res) << std::endl;
     return "";
   }
-
-  curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &last_response_code_);
 
   return response;
 }
@@ -58,7 +56,6 @@ std::string HttpClient::post(const std::string &url,
   std::string response;
 
   if (!curl_) {
-    std::cerr << "CURL not initialized!" << std::endl;
     return "";
   }
 
@@ -68,7 +65,8 @@ std::string HttpClient::post(const std::string &url,
   curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, json_body.c_str());
   curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl_, CURLOPT_TIMEOUT, 60L); // 60 секунд для игр
+  curl_easy_setopt(curl_, CURLOPT_TIMEOUT,
+                   10L); // 10 секунд достаточно для хода агента
 
   // Устанавливаем заголовки
   struct curl_slist *headers = nullptr;
@@ -80,8 +78,6 @@ std::string HttpClient::post(const std::string &url,
   curl_slist_free_all(headers);
 
   if (res != CURLE_OK) {
-    std::cerr << "POST request failed: " << curl_easy_strerror(res)
-              << std::endl;
     return "";
   }
 

@@ -187,8 +187,6 @@ GameResult GameManager::runGame(const std::string &agent_x,
 
   json_body << "}";
 
-  std::cout << "Sending POST to " << api_url_ << "/game/play" << std::endl;
-
   std::string response =
       http_client_.post(api_url_ + "/game/play", json_body.str());
 
@@ -212,21 +210,28 @@ MafiaGameResult
 GameManager::runMafiaGame(const std::vector<std::string> &agents,
                           int num_players, int bet_amount, bool use_chat) {
 
-  std::cout << "🎭 Starting Mafia Game (C++ Engine) with " << num_players
-            << " players" << std::endl;
-
-  // Выбираем случайных агентов
+  // Выбираем агентов (если их мало - дублируем)
   std::vector<std::string> selected_agent_names;
   std::vector<std::string> pool = agents;
-  if (pool.empty())
+
+  if (pool.empty()) {
     pool = getAvailableMafiaAgents();
+  }
 
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(pool.begin(), pool.end(), g);
+  if (pool.empty()) {
+    pool = {"random", "heuristic", "qlearning"};
+  }
 
-  for (int i = 0; i < num_players && i < static_cast<int>(pool.size()); ++i) {
-    selected_agent_names.push_back(pool[i]);
+  while (static_cast<int>(selected_agent_names.size()) < num_players) {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(pool.begin(), pool.end(), g);
+
+    for (const auto &name : pool) {
+      if (static_cast<int>(selected_agent_names.size()) < num_players) {
+        selected_agent_names.push_back(name);
+      }
+    }
   }
 
   MafiaGameResult result;
@@ -279,8 +284,6 @@ bool GameManager::trainAgent(const std::string &agent_type, int episodes,
   json_body << "\"seed\": " << seed << ",";
   json_body << "\"opponent_type\": \"random\"";
   json_body << "}";
-
-  std::cout << "Training agent via API..." << std::endl;
 
   std::string response =
       http_client_.post(api_url_ + "/train", json_body.str());
