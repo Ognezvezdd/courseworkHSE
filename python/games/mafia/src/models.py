@@ -7,12 +7,16 @@ class ChatMessage(BaseModel):
     player_name: str
     player_role: str
     text: str
-    is_public: bool
+    timestamp: str = ""
+    is_night: bool = False
+    is_public: bool = True
 
 class PlayerState(BaseModel):
     id: int
     name: str
-    is_alive: bool
+    role: str = "citizen"
+    is_alive: bool = True
+    is_protected: bool = False
     votes_against: int = 0
 
 class GameState(BaseModel):
@@ -20,7 +24,6 @@ class GameState(BaseModel):
     day: int
     players: List[PlayerState]
     chat_history: List[ChatMessage]
-    # Для мафии, дона, шерифа, доктора - их специфичная инфа
     known_roles: Optional[dict] = None 
 
 class AgentAction(BaseModel):

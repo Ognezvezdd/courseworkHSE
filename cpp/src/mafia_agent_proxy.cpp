@@ -10,7 +10,7 @@ using namespace Mafia;
 MafiaAgentProxy::MafiaAgentProxy(const std::string &name,
                                  const std::string &api_url)
     : name_(name), api_url_(api_url), role_(Role::CITIZEN) {
-  // Инициализация
+  http_client_ = std::make_unique<HttpClient>();
 }
 
 PlayerAction
@@ -203,10 +203,20 @@ void MafiaAgentProxy::updateKnowledge(const std::string &info) {
 
 std::string MafiaAgentProxy::sendRequestToAPI(const std::string &endpoint,
                                               const std::string &json_data) {
-  // Заглушка - в реальности это будет HTTP запрос к Python API
-  std::cout << "MafiaAgentProxy: Would send to " << api_url_ + endpoint
-            << " data: " << json_data.substr(0, 100) << "..." << std::endl;
+  std::cout << "🌐 MafiaAgentProxy: Sending POST to " << api_url_ + endpoint
+            << std::endl;
+  // std::cout << "Data: " << json_data << std::endl; // Uncomment for debug
 
-  // В реальной реализации здесь будет использование HttpClient
-  return "";
+  try {
+    std::string response = http_client_->post(api_url_ + endpoint, json_data);
+    if (http_client_->getLastResponseCode() != 200) {
+      std::cerr << "❌ API Error: " << http_client_->getLastResponseCode()
+                << std::endl;
+      return "";
+    }
+    return response;
+  } catch (const std::exception &e) {
+    std::cerr << "❌ API Exception: " << e.what() << std::endl;
+    return "";
+  }
 }

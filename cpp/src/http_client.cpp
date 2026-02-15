@@ -12,7 +12,11 @@ size_t HttpClient::WriteCallback(void *contents, size_t size, size_t nmemb,
 }
 
 HttpClient::HttpClient() : curl_(nullptr), last_response_code_(0) {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
+  static bool is_global_initialized = false;
+  if (!is_global_initialized) {
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    is_global_initialized = true;
+  }
   curl_ = curl_easy_init();
 }
 
@@ -20,7 +24,8 @@ HttpClient::~HttpClient() {
   if (curl_) {
     curl_easy_cleanup(curl_);
   }
-  curl_global_cleanup();
+  // curl_global_cleanup() намеренно не вызывается здесь,
+  // так как другие экземпляры HttpClient могут продолжать работу.
 }
 
 std::string HttpClient::get(const std::string &url) {
