@@ -1,8 +1,8 @@
 
 import random
 from typing import List, Optional
-from mafia.models import GameState, AgentAction, PlayerState
-from mafia.strategies.base_strategy import RoleStrategy
+from ..models import GameState, AgentAction, PlayerState
+from .base_strategy import RoleStrategy
 
 class RandomMafiaStrategy(RoleStrategy):
     """Случайная стратегия для Мафии: убивает и голосует наугад."""

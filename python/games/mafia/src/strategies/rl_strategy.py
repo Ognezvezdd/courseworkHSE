@@ -1,7 +1,7 @@
 
 from typing import Dict, Any, List
-from mafia.models import GameState, AgentAction
-from mafia.strategies.base_strategy import RoleStrategy
+from ..models import GameState, AgentAction
+from .base_strategy import RoleStrategy
 import random
 
 class LearningStrategy(RoleStrategy):

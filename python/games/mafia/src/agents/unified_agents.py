@@ -1,9 +1,9 @@
 
 from typing import Dict, Any, Type
-from mafia.models import GameState, AgentAction, PlayerState
-from mafia.strategies.base_strategy import RoleStrategy
-from mafia.strategies.random_strategies import RandomMafiaStrategy, RandomCitizenStrategy, RandomSheriffStrategy, RandomDoctorStrategy
-from mafia.strategies.rl_strategy import LearningStrategy
+from ..models import GameState, AgentAction, PlayerState
+from ..strategies.base_strategy import RoleStrategy
+from ..strategies.random_strategies import RandomMafiaStrategy, RandomCitizenStrategy, RandomSheriffStrategy, RandomDoctorStrategy
+from ..strategies.rl_strategy import LearningStrategy
 
 class BaseAgent:
     """

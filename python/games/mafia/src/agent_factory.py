@@ -1,6 +1,6 @@
 
-from mafia.models import GameState, AgentAction, PlayerState
-from mafia.agents.unified_agents import RandomAgent, RLAgent
+from .models import GameState, AgentAction, PlayerState
+from .agents.unified_agents import RandomAgent, RLAgent
 from typing import Dict, Type
 
 class AgentFactory:

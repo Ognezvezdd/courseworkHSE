@@ -1,6 +1,6 @@
 
 from abc import ABC, abstractmethod
-from mafia.models import GameState, AgentAction
+from ..models import GameState, AgentAction
 
 class RoleStrategy(ABC):
     """
