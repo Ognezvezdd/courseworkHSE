@@ -10,20 +10,23 @@ LABEL description="AI Agents Platform — 5x5 Tic-Tac-Toe Simulation"
 WORKDIR /app
 
 # Копирование зависимостей
-COPY requirements.txt .
+# Копируем зависимости
+COPY common/requirements.txt .
 
 # Установка зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
+# Копируем весь код (включая common, games, visualization)
 COPY . .
 
 # Переменные окружения
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
 
 # Expose API port
 EXPOSE 8000
 
 # Запуск FastAPI сервера через uvicorn
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Запускаем main_service.py как модуль
+CMD ["uvicorn", "main_service:app", "--host", "0.0.0.0", "--port", "8000"]
