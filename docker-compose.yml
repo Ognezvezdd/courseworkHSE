@@ -5,7 +5,7 @@ services:
   python-api:
     build:
       context: ./python
-      dockerfile: Dockerfile
+      dockerfile: common/Dockerfile
     container_name: ai-agents-api
     ports:
       - "8000:8000"
