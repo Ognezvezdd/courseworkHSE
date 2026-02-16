@@ -408,14 +408,6 @@ make
 
 ---
 
-## Контакты
-
-По вопросам проекта обращайтесь к авторам.
-
-**GitHub**: [Ваша ссылка]
-
----
-
 ## Acknowledgments
 
 - Telegram Bot API Documentation
