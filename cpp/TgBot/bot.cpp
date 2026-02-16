@@ -496,33 +496,48 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                   Keyboard::createMafiaPlayersMenu());
       return;
     }
-    if (text.find("игроков") != string::npos &&
-        text != "👥 Количество игроков") {
-      try {
-        int n = stoi(text.substr(0, text.find(' ')));
+
+    if (text.find("игроков") != std::string::npos && text != "👥 Количество игроков") {
+      std::string digits;
+      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+
+      if (!digits.empty()) {
+        int n = std::stoi(digits);
         if (n >= 6 && n <= 12) {
           state.mafia_players = n;
           sendMessage(chat_id, "✅ Игроков: " + to_string(n),
                       Keyboard::createMafiaMenu());
+        } else {
+          sendMessage(chat_id, "❌ Нужно от 6 до 12 игроков",
+                      Keyboard::createMafiaPlayersMenu());
         }
-      } catch (...) {
+      } else {
+        sendMessage(chat_id, "❌ Неверное число игроков",
+                    Keyboard::createMafiaPlayersMenu());
       }
       return;
     }
 
-    // --- Ставка ---
+
+    // --- Ставка (мафия) ---
     if (text == "💰 Ставка мафия") {
       sendMessage(chat_id, "💰 Выберите размер ставки:",
                   Keyboard::createMafiaBetsMenu());
       return;
     }
-    if (text.rfind("Ставка мафия ", 0) == 0) {
-      string num = text.substr(13);
-      try {
-        state.bet_amount = stoi(num);
-        sendMessage(chat_id, "✅ Ставка: " + num + " очков",
+
+    bool isMafiaBet = (text.rfind("Ставка мафия", 0) == 0) ||
+                      (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
+
+    if (isMafiaBet) {
+      std::string digits;
+      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+
+      if (!digits.empty()) {
+        state.bet_amount = std::stoi(digits);
+        sendMessage(chat_id, "✅ Ставка: " + digits + " очков",
                     Keyboard::createMafiaMenu());
-      } catch (...) {
+      } else {
         sendMessage(chat_id, "❌ Неверная ставка",
                     Keyboard::createMafiaBetsMenu());
       }
