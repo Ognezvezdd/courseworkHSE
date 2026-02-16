@@ -606,7 +606,7 @@ void TelegramBot::run() {
     try {
       Json::Value request_params;
       request_params["offset"] = last_update_id + 1;
-      request_params["timeout"] = 20;
+      request_params["timeout"] = 35;
       request_params["limit"] = 10;
 
       Json::StreamWriterBuilder writer;
