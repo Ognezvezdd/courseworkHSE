@@ -456,16 +456,18 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                   "💰 Выберите размер ставки:", Keyboard::createTTTBetsMenu());
       return;
     }
-    if (text.rfind("Ставка ", 0) == 0 && text.find("мафия") == string::npos) {
-      // "Ставка 100" → извлечь 100
-      string num = text.substr(7);
-      try {
-        state.bet_amount = stoi(num);
-        sendMessage(chat_id, "✅ Ставка: " + num + " очков",
-                    Keyboard::createTicTacToeMenu());
-      } catch (...) {
-        sendMessage(chat_id, "❌ Неверная ставка",
-                    Keyboard::createTTTBetsMenu());
+    bool isBet = (text.rfind("Ставка", 0) == 0 && text.find("мафия") == std::string::npos)
+              || (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
+
+    if (isBet) {
+      std::string digits;
+      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+
+      if (!digits.empty()) {
+        state.bet_amount = std::stoi(digits);
+        sendMessage(chat_id, "✅ Ставка: " + digits + " очков", Keyboard::createTicTacToeMenu());
+      } else {
+        sendMessage(chat_id, "❌ Неверная ставка", Keyboard::createTTTBetsMenu());
       }
       return;
     }
