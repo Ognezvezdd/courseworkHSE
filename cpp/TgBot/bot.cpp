@@ -606,7 +606,7 @@ void TelegramBot::run() {
     try {
       Json::Value request_params;
       request_params["offset"] = last_update_id + 1;
-      request_params["timeout"] = 30;
+      request_params["timeout"] = 20;
       request_params["limit"] = 10;
 
       Json::StreamWriterBuilder writer;
@@ -617,9 +617,9 @@ void TelegramBot::run() {
 
       if (response.empty()) {
 #ifdef _WIN32
-        Sleep(2000);
+        Sleep(1000);
 #else
-        sleep(2);
+        sleep(1);
 #endif
         continue;
       }
@@ -631,18 +631,18 @@ void TelegramBot::run() {
 
       if (!Json::parseFromStream(reader, response_stream, &root, &errors)) {
 #ifdef _WIN32
-        Sleep(3000);
+        Sleep(1000);
 #else
-        sleep(3);
+        sleep(1);
 #endif
         continue;
       }
 
       if (!root["ok"].asBool()) {
 #ifdef _WIN32
-        Sleep(3000);
+        Sleep(1000);
 #else
-        sleep(3);
+        sleep(1);
 #endif
         continue;
       }
