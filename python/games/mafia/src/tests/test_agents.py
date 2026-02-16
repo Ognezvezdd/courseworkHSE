@@ -1,7 +1,7 @@
 
 import pytest
-from games.mafia.src.models import GameState, PlayerState
-from games.mafia.src.agent_factory import AgentFactory
+from ..models import GameState, PlayerState
+from ..agent_factory import AgentFactory
 
 # Простые тесты для агентов мафии
 

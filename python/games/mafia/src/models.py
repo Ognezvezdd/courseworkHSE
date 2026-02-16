@@ -24,6 +24,7 @@ class GameState(BaseModel):
     day: int
     players: List[PlayerState]
     chat_history: List[ChatMessage]
+    my_id: int = -1  # ID этого агента в игре
     known_roles: Optional[dict] = None 
 
 class AgentAction(BaseModel):

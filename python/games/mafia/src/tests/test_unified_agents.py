@@ -1,8 +1,8 @@
 
 import pytest
-from games.mafia.src.models import GameState, PlayerState, AgentAction
-from games.mafia.src.agents.unified_agents import RandomAgent, RLAgent
-from games.mafia.src.agent_factory import AgentFactory
+from ..models import GameState, PlayerState, AgentAction
+from ..agents.unified_agents import RandomAgent, RLAgent
+from ..agent_factory import AgentFactory
 
 # Тесты для унифицированных агентов
 

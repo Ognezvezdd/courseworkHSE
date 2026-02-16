@@ -35,19 +35,30 @@ class LearningStrategy(RoleStrategy):
     def _get_possible_actions(self, game_state: GameState) -> List[AgentAction]:
         """Возвращает список всех валидных действий в текущем состоянии."""
         actions = []
-        alive_players = [p.id for p in game_state.players if p.is_alive]
+        # Выжившие кроме себя (для большинства действий)
+        others = [p.id for p in game_state.players if p.is_alive and p.id != game_state.my_id]
+        all_alive = [p.id for p in game_state.players if p.is_alive]
         
-        # Пример для голосования
         if "VOTE" in game_state.phase:
-            for pid in alive_players:
+            for pid in others:
                 actions.append(AgentAction(action_type="VOTE_KILL", target_id=pid))
         
-        # Пример для ночных действий
         elif "NIGHT" in game_state.phase:
              if self.role_name == "MAFIA":
-                 for pid in alive_players:
+                 # Мафия убивает врагов
+                 enemies = [p.id for p in game_state.players if p.is_alive and p.role.lower() not in ["mafia", "don"]]
+                 for pid in enemies:
                     actions.append(AgentAction(action_type="MAFIA_KILL", target_id=pid))
-             # ... и так далее для других ролей
+             elif self.role_name == "DOCTOR":
+                 # Доктор может лечить всех
+                 for pid in all_alive:
+                    actions.append(AgentAction(action_type="DOCTOR_HEAL", target_id=pid))
+             elif self.role_name == "SHERIFF":
+                 for pid in others:
+                    actions.append(AgentAction(action_type="SHERIFF_CHECK", target_id=pid))
+             elif self.role_name == "DON":
+                 for pid in others:
+                    actions.append(AgentAction(action_type="DON_CHECK", target_id=pid))
         
         if not actions:
             actions.append(AgentAction(action_type="PASS"))
