@@ -249,9 +249,16 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
   }
 
   // Игровой цикл
-  while (!game.isGameOver()) {
+  int cycle_count = 0;
+  while (!game.isGameOver() && cycle_count < 50) {
     if (!game.executeCycle())
       break;
+    cycle_count++;
+  }
+
+  if (cycle_count >= 50 && !game.isGameOver()) {
+    std::cout << "⚠️ Mafia game reached max cycles (50) and was stopped."
+              << std::endl;
   }
 
   // Результаты

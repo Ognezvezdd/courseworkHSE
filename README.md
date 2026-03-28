@@ -14,8 +14,8 @@
 Это модульная платформа для разработки, тестирования и соревнований искусственных интеллектов в настольных играх (Крестики-нолики 5x5 и Мафия).
 
 Система состоит из двух функциональных блоков:
-1.  **Backend (Python)**: Ядро симуляции, реализация агентов (Random, Heuristic, RL) и REST API.
-2.  **Client (C++)**: Telegram-бот интерфейс для пользователей, позволяющий делать ставки и наблюдать за матчами.
+1.  **Backend (Python)**: Ядро симуляции, реализация агентов (Random, Heuristic, RL, **LLM**) и REST API.
+2.  **Client (C++)**: Telegram-бот интерфейс для пользователей, позволяющий делать ставки и наблюдать за матчами. Поддерживает выбор LLM-агентов.
 
 ### Архитектура взаимодействия
 
@@ -28,7 +28,8 @@
         │                                         │
         ▼                                         ▼
   Telegram Users                          AI Agents (Random,
-  (Ставки, игры)                          Heuristic, Q-Learning)
+  (Ставки, игры)                          Heuristic, Q-Learning,
+                                          **Local LLM: Gemma 3**)
 ```
 
 **Преимущества микросервисной архитектуры:**
@@ -69,6 +70,18 @@ cp cpp/config.json.example cpp/config.json
 docker-compose up --build
 
 # Готово! Бот доступен в Telegram
+
+### Важное замечание по LLM (Gemma 3)
+Для работы LLM-агентов необходимо, чтобы на хост-машине был запущен **Ollama** с моделью `gemma3`.
+1. Установите Ollama с [ollama.com](https://ollama.com).
+2. Запустите Ollama, разрешив внешние соединения (для Docker):
+   ```bash
+   OLLAMA_HOST=0.0.0.0 ollama serve
+   ```
+3. Скачайте модель:
+   ```bash
+   ollama run gemma3
+   ```
 ```
 
 **Архитектура в Docker:**
@@ -86,7 +99,9 @@ cd python
 pip install -r requirements.txt
 
 # Запуск API сервера
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+python3 main_service.py
+# Или через uvicorn
+uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
 
 # Swagger UI доступен на http://localhost:8000/docs
 ```
@@ -125,7 +140,7 @@ make
 *   **Вычисления**: NumPy
 *   **Визуализация**: Matplotlib
 *   **Тестирование**: Pytest
-*   **AI**: Q-Learning (Reinforcement Learning), Heuristic Algorithms
+*   **AI**: Q-Learning (Reinforcement Learning), Heuristic Algorithms, **LLM (Gemma 3 via Ollama API)**
 
 ### Client (C++)
 *   **Язык**: C++17
@@ -156,7 +171,7 @@ Python FastAPI предоставляет следующие эндпоинты:
 Получить список доступных агентов
 ```json
 {
-  "agents": ["random", "heuristic", "qlearning"]
+  "agents": ["random", "heuristic", "qlearning", "llm"]
 }
 ```
 
@@ -337,6 +352,8 @@ AGENT_CLASSES = {
 - [x] Обучаемый агент (Q-Learning)
 - [x] REST API (FastAPI)
 - [x] Telegram-бот интерфейс (C++)
+- [x] Интеграция локальных LLM (Gemma 3) через Ollama
+- [x] Логирование "рассуждений" (Chain of Thought) LLM в консоль API
 - [x] Система ставок и управления состояниями пользователей
 - [x] Визуализация партий (для Крестиков-ноликов)
 - [x] Docker контейнеризация

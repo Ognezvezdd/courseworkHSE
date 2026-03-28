@@ -18,7 +18,15 @@ class AgentRequest(BaseModel):
 @router.post("/agent_action", response_model=AgentAction)
 async def get_agent_action(request: AgentRequest):
     game_state = prepare_game_state(request)
-    action = AgentFactory.get_action_for_player(game_state, request.role, request.agent_name)
+    
+    agent_type = "RANDOM"
+    name_upper = request.agent_name.upper()
+    if "LLM" in name_upper:
+        agent_type = "LLM"
+    elif "RL" in name_upper or "QLEARNING" in name_upper:
+        agent_type = "RL"
+        
+    action = AgentFactory.get_action_for_player(game_state, request.role, request.agent_name, agent_type)
     return action
 
 class ChatResponse(BaseModel):
@@ -27,7 +35,15 @@ class ChatResponse(BaseModel):
 @router.post("/agent_chat", response_model=ChatResponse)
 async def get_agent_chat(request: AgentRequest):
     game_state = prepare_game_state(request)
-    agent = AgentFactory.get_agent("RANDOM", request.agent_name)
+    
+    agent_type = "RANDOM"
+    name_upper = request.agent_name.upper()
+    if "LLM" in name_upper:
+        agent_type = "LLM"
+    elif "RL" in name_upper or "QLEARNING" in name_upper:
+        agent_type = "RL"
+        
+    agent = AgentFactory.get_agent(agent_type, request.agent_name)
     action = agent.decide_action(game_state, request.role)
     
     if action.action_type == "CHAT_MESSAGE":

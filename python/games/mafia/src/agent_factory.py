@@ -1,6 +1,7 @@
 
 from .models import GameState, AgentAction, PlayerState
 from .agents.unified_agents import RandomAgent, RLAgent
+from .agents.llm_gemma3_agent import LLMAgent
 from typing import Dict, Type
 
 class AgentFactory:
@@ -13,7 +14,7 @@ class AgentFactory:
     AGENT_CLASS_MAP = {
         "RANDOM": RandomAgent,
         "RL": RLAgent, 
-        # "LLM": LLMAgent, # Заглушка
+        "LLM": LLMAgent, 
     }
 
     @staticmethod

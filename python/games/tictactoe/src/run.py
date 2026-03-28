@@ -13,12 +13,14 @@ import json
 from agents.heuristic_agent import HeuristicAgent
 from agents.qlearning_agent import QLearningAgent
 from agents.random_agent import RandomAgent
+from agents.llm_gemma3_agent import LLMAgent
 from game.engine import run_game, format_slides
 
 AGENT_CLASSES = {
     "random": RandomAgent,
     "heuristic": HeuristicAgent,
     "qlearning": QLearningAgent,
+    "llm": LLMAgent,
 }
 
 

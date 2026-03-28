@@ -306,7 +306,8 @@ void MafiaGame::executeDayPhase() {
       "Начинается дневное обсуждение. У вас есть время на дискуссию.", false);
 
   // Даем агентам возможность пообщаться
-  for (int i = 0; i < 5; ++i) { // 5 раундов общения
+  for (int i = 0; i < 2;
+       ++i) { // 2 раунда общения (вместо 5, чтобы не засорять лог)
     for (const auto &player : players_) {
       if (player.is_alive) {
         // agents_ vector is 0-indexed, player.id is 1-indexed

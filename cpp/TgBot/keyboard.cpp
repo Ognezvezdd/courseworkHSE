@@ -22,7 +22,7 @@ string Keyboard::createTicTacToeMenu() {
 
 string Keyboard::createTTTAgentMenu() {
   vector<vector<string>> buttons = {
-      {"Random"}, {"Heuristic"}, {"QLearning"}, {"◀️ Назад"}};
+      {"Random"}, {"Heuristic"}, {"QLearning"}, {"LLM"}, {"◀️ Назад"}};
   return createReplyKeyboard(buttons);
 }
 
@@ -30,6 +30,7 @@ string Keyboard::createTTTOpponentMenu() {
   vector<vector<string>> buttons = {{"Противник: Random"},
                                     {"Противник: Heuristic"},
                                     {"Противник: QLearning"},
+                                    {"Противник: LLM"},
                                     {"◀️ Назад"}};
   return createReplyKeyboard(buttons);
 }

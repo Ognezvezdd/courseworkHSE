@@ -138,7 +138,7 @@ sudo systemctl start docker
 ```bash
 cd python
 pip install -r requirements.txt
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+python3 main_service.py
 ```
 
 ### C++ Bot

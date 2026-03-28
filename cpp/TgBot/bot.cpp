@@ -59,7 +59,7 @@ string TelegramBot::makeRequest(const string &method, const string &params) {
 
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 45L);
 
   CURLcode res = curl_easy_perform(curl);
 
@@ -347,21 +347,29 @@ void TelegramBot::formatMafiaResult(int64_t chat_id,
 
 void TelegramBot::sendMafiaChatLog(
     int64_t chat_id, const std::vector<Mafia::ChatMessage> &chat_log) {
-  stringstream ss;
-  ss << "💬 *Лог чата:*\n\n";
 
+  string current_chunk = "💬 Лог чата (Часть 1):\n\n";
+  int part = 1;
   int count = 0;
+
   for (const auto &msg : chat_log) {
-    if (msg.is_public && count < 20) {
-      ss << "*" << msg.player_name << ":* " << msg.text << "\n";
+    if (msg.is_public) {
+      string line = msg.player_name + ": " + msg.text + "\n";
+
+      // Telegram safely supports ~4096 chars. Let's chunk at 3000 bytes.
+      if (current_chunk.length() + line.length() > 3000) {
+        sendMessage(chat_id, current_chunk, "", false);
+        part++;
+        current_chunk = "💬 Лог чата (Часть " + to_string(part) + "):\n\n";
+      }
+
+      current_chunk += line;
       count++;
-      if (ss.str().length() > 3500)
-        break;
     }
   }
 
-  if (count > 0) {
-    sendMessage(chat_id, ss.str(), "", true);
+  if (current_chunk.length() > 30) { // More than just header
+    sendMessage(chat_id, current_chunk, "", false);
   }
 }
 
@@ -425,7 +433,8 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                   "🤖 Выберите своего агента:", Keyboard::createTTTAgentMenu());
       return;
     }
-    if (text == "Random" || text == "Heuristic" || text == "QLearning") {
+    if (text == "Random" || text == "Heuristic" || text == "QLearning" ||
+        text == "LLM") {
       string agent = text;
       std::transform(agent.begin(), agent.end(), agent.begin(), ::tolower);
       state.selected_agent = agent;
@@ -441,7 +450,7 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
     if (text == "Противник: Random" || text == "Противник: Heuristic" ||
-        text == "Противник: QLearning") {
+        text == "Противник: QLearning" || text == "Противник: LLM") {
       string opp = text.substr(text.find(": ") + 2);
       std::transform(opp.begin(), opp.end(), opp.begin(), ::tolower);
       state.opponent_agent = opp;
@@ -456,18 +465,24 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                   "💰 Выберите размер ставки:", Keyboard::createTTTBetsMenu());
       return;
     }
-    bool isBet = (text.rfind("Ставка", 0) == 0 && text.find("мафия") == std::string::npos)
-              || (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
+    bool isBet =
+        (text.rfind("Ставка", 0) == 0 &&
+         text.find("мафия") == std::string::npos) ||
+        (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
 
     if (isBet) {
       std::string digits;
-      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+      for (unsigned char c : text)
+        if (std::isdigit(c))
+          digits += char(c);
 
       if (!digits.empty()) {
         state.bet_amount = std::stoi(digits);
-        sendMessage(chat_id, "✅ Ставка: " + digits + " очков", Keyboard::createTicTacToeMenu());
+        sendMessage(chat_id, "✅ Ставка: " + digits + " очков",
+                    Keyboard::createTicTacToeMenu());
       } else {
-        sendMessage(chat_id, "❌ Неверная ставка", Keyboard::createTTTBetsMenu());
+        sendMessage(chat_id, "❌ Неверная ставка",
+                    Keyboard::createTTTBetsMenu());
       }
       return;
     }
@@ -497,9 +512,12 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-    if (text.find("игроков") != std::string::npos && text != "👥 Количество игроков") {
+    if (text.find("игроков") != std::string::npos &&
+        text != "👥 Количество игроков") {
       std::string digits;
-      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+      for (unsigned char c : text)
+        if (std::isdigit(c))
+          digits += char(c);
 
       if (!digits.empty()) {
         int n = std::stoi(digits);
@@ -518,7 +536,6 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-
     // --- Ставка (мафия) ---
     if (text == "💰 Ставка мафия") {
       sendMessage(chat_id, "💰 Выберите размер ставки:",
@@ -526,12 +543,15 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-    bool isMafiaBet = (text.rfind("Ставка мафия", 0) == 0) ||
-                      (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
+    bool isMafiaBet =
+        (text.rfind("Ставка мафия", 0) == 0) ||
+        (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
 
     if (isMafiaBet) {
       std::string digits;
-      for (unsigned char c : text) if (std::isdigit(c)) digits += char(c);
+      for (unsigned char c : text)
+        if (std::isdigit(c))
+          digits += char(c);
 
       if (!digits.empty()) {
         state.bet_amount = std::stoi(digits);

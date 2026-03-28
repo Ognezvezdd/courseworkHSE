@@ -1,6 +1,6 @@
-# AI Agents Platform
+# Tic-Tac-Toe AI Platform
 
-Платформа симуляции конкурентного взаимодействия AI-агентов
+Платформа симуляции конкурентного взаимодействия AI-агентов в игре "Крестики-нолики 5x5".
 
 ---
 
@@ -8,152 +8,18 @@
 
 Python часть проекта реализует:
 
-- **Игровую среду** 5×5 крестики-нолики (победа при 4 символах подряд)
+- **Игровую среду** 5×5 (победа при 4 символах подряд)
 - **Систему AI-агентов** с единым интерфейсом
 - **Функцию `run_game()`** для запуска партий с пошаговой историей
 - **Воспроизводимость** результатов через механизм seed
 - **REST API (FastAPI)** для взаимодействия с C++ Telegram ботом
+- **LLM-агенты** (Gemma 3) для игры через текстовые запросы
 
 ### Роль в системе
 
 Python API работает как независимый микросервис:
 ```
-C++ Telegram Bot  ──HTTP──▶  Python FastAPI  ──▶  AI Agents
-   (клиент)                    (сервер)           (игровой движок)
-```
-
-**Преимущества:**
-- ✅ Независимое развертывание
-- ✅ Легкое тестирование через HTTP
-- ✅ Масштабируемость
-- ✅ Swagger документация из коробки
-
----
-
-## Архитектура
-
-```
-.
-├── agents/                 # AI-агенты
-│   ├── base_agent.py       # Абстрактный базовый класс
-│   ├── random_agent.py     # Случайный агент
-│   ├── heuristic_agent.py  # Эвристический агент
-│   └── qlearning_agent.py  # Q-learning агент
-├── game/                   # Игровая среда
-│   ├── board.py            # Игровое поле
-│   ├── rules.py            # Правила игры
-│   └── engine.py           # Игровой движок
-├── visualization/          # Визуализация
-│   ├── board_visualizer.py # Отрисовка поля
-│   └── renderer.py         # Рендеринг игр
-├── tests/                  # Тесты
-├── run.py                  # Демонстрационный скрипт
-├── visualize.py            # CLI визуализации
-├── requirements.txt        # Зависимости
-├── Dockerfile              # Docker-образ
-└── README.md
-```
-
----
-
-## Быстрый старт
-
-### Локальный запуск
-
-```bash
-# Установка зависимостей
-pip install -r requirements.txt
-
-# Запуск демонстрации
-python3 run.py --agent-x random --agent-o heuristic --seed 42
-
-# Запуск тестов
-python3 -m pytest tests/ -v
-```
-
-### Docker (in progress)
-
-```bash
-# Сборка образа
-docker build -t ai-agents-platform .
-
-# Запуск демонстрации
-docker run --rm ai-agents-platform
-
-# Запуск с параметрами
-docker run --rm ai-agents-platform python run.py --agent-x qlearning --agent-o random --train 1000 --seed 42
-
-# Запуск тестов
-docker run --rm ai-agents-platform pytest tests/ -v
-```
-
----
-
-## Использование
-
-### Демонстрационный скрипт
-
-```bash
-# Базовый запуск
-python3 run.py
-
-# С выбором агентов
-python3 run.py --agent-x heuristic --agent-o random
-
-# С фиксированным seed
-python3 run.py --seed 42
-
-# Вывод в JSON
-python3 run.py --json
-
-# Множественные игры (статистика)
-python3 run.py --games 100
-
-# Обучение Q-learning агента
-python3 run.py --agent-x qlearning --train 1000 --seed 42
-```
-
-### REST API Сервер
-
-Проект включает `api.py` для запуска в виде HTTP-сервиса (на базе FastAPI).
-
-```bash
-# Запуск сервера разработки
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
-```
-
-Документация Swagger UI будет доступна по адресу: `http://localhost:8000/docs`.
-
-**Примеры запросов:**
-
-*   **POST /game/play**: Запустить игру
-    ```json
-    {
-      "agent_x": "heuristic",
-      "agent_o": "random",
-      "seed": 42
-    }
-    ```
-*   **GET /agents**: Получить список доступных агентов
-
-### Программное использование
-
-```python
-from game import run_game
-from agents import RandomAgent, HeuristicAgent
-
-# Создание агентов
-agent_x = HeuristicAgent()
-agent_o = RandomAgent()
-
-# Запуск игры
-slides = run_game(agent_x, agent_o, seed=42)
-
-# Анализ результатов
-for slide in slides:
-    print(f"Ход {slide['step']}: {slide['current_player']} -> {slide['action']}")
-
-print(f"Победитель: {slides[-1]['winner']}")
+C++ Telegram Bot  ──HTTP──▶  Python FastAPI  ──▶  AI Agents (Random, RL, LLM)
 ```
 
 ---
@@ -165,82 +31,45 @@ print(f"Победитель: {slides[-1]['winner']}")
 | `RandomAgent`    | Выбирает случайный допустимый ход                                     |
 | `HeuristicAgent` | Использует правила: выигрыш => блокировка => центр => соседние клетки |
 | `QLearningAgent` | Табличный Q-learning с жадной стратегией                              |
+| **`LLMAgent`**   | **(НОВОЕ)** Использует Gemma 3 (Ollama) для выбора хода по промпту    |
 
-### Создание нового агента
+---
 
-```python
-from agents.base_agent import BaseAgent
+## Быстрый старт (LLM)
 
+Для работы `llm` агентов убедитесь, что Ollama запущен локально:
+```bash
+OLLAMA_HOST=0.0.0.0 ollama serve
+```
 
-class MyAgent(BaseAgent):
-    def select_action(self, board: list[list[str]], player_symbol: str) -> tuple[int, int]:
-        valid_moves = self._get_valid_moves(board)
-        # Ваша логика выбора хода
-        return valid_moves[0]
+Запуск теста LLM-агента:
+```bash
+pytest python/games/tictactoe/src/tests/test_llm_agent.py
 ```
 
 ---
 
-## 📊 Формат slides
+## REST API Сервер
 
-Функция `run_game()` возвращает список шагов:
+Документация Swagger UI будет доступна по адресу: `http://localhost:8000/docs`.
 
-```python
-var = {
-    "step": 3,
-    "current_player": "X",
-    "action": (1, 2),
-    "board": [
-        ["X", ".", ".", ".", "."],
-        [".", "O", "X", ".", "."],
-        [".", ".", ".", ".", "."],
-        [".", ".", ".", ".", "."],
-        [".", ".", ".", ".", "."]
-    ],
-    "is_terminal": False,
-    "winner": None
-}
-```
+**Примеры запросов:**
+
+*   **POST /game/play**: Запустить игру
+    ```json
+    {
+      "agent_x": "llm",
+      "agent_o": "heuristic",
+      "seed": 42
+    }
+    ```
+*   **GET /agents**: Получить список доступных агентов (включая `llm`)
 
 ---
 
 ## 🖼 Визуализация
 
-Модуль `visualization/` генерирует изображения игровых партий из JSON.
-
-### CLI-скрипт
-
-```bash
-# Сохранить игру в JSON
-python3 run.py --agent-x heuristic --agent-o random --seed 40 --json > game.json
-
-# Сводное изображение игры
-python3 visualize.py game.json --summary
-
-# Все шаги по отдельности
-python3 visualize.py game.json --all --output output/
-
-# Только финальное состояние
-python3 visualize.py game.json --final
-```
-
-### Программное использование
-
-```python
-from visualization import GameRenderer
-
-renderer = GameRenderer()
-
-# Из JSON-файла
-renderer.render_summary("game.json", "summary.png")
-
-# Из списка slides
-from game import run_game
-from agents import RandomAgent
-
-slides = run_game(RandomAgent(), RandomAgent(), seed=42)
-renderer.render_final(slides, "final.png")
-```
+Модуль `visualization/` генерирует изображения игровых партий из JSON/slides. Поддерживается генерация сводных изображений для Telegram-бота.
 
 ---
 
@@ -250,37 +79,6 @@ renderer.render_final(slides, "final.png")
 # Все тесты
 python3 -m pytest tests/ -v
 
-# Конкретный модуль
-python3 -m pytest tests/test_board.py -v
-
-# С покрытием
-python3 -m pytest tests/ --cov=. --cov-report=term-missing
+# Тест LLM
+python3 -m pytest tests/test_llm_agent.py -v
 ```
-
----
-
-## Расширяемость
-
-### Добавление новой игры
-
-1. Создать класс `Board` с методами:
-    - `make_move(row, col, player)`
-    - `get_valid_moves()`
-    - `to_list()`
-
-2. Создать класс `Rules` с методами:
-    - `check_winner(board)`
-    - `is_terminal(board)`
-
-3. Адаптировать `engine.py` или создать отдельный движок
-
-### Интеграция с платформой
-
-Функция `run_game()` возвращает данные в формате, готовом для:
-
-- REST API
-- WebSocket трансляции
-- Сохранения в БД
-- Визуализации на frontend
-
----

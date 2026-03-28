@@ -17,6 +17,7 @@ from agents.heuristic_agent import HeuristicAgent
 from agents.qlearning_agent import QLearningAgent
 from agents.random_agent import RandomAgent
 from agents.base_agent import BaseAgent
+from agents.llm_gemma3_agent import LLMAgent
 from game.engine import run_game
 from visualization.renderer import GameRenderer
 
@@ -39,6 +40,7 @@ AGENT_CLASSES = {
     "random": RandomAgent,
     "heuristic": HeuristicAgent,
     "qlearning": QLearningAgent,
+    "llm": LLMAgent,
 }
 
 class GameRequest(BaseModel):

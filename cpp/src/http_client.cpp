@@ -39,7 +39,7 @@ std::string HttpClient::get(const std::string &url) {
   curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl_, CURLOPT_TIMEOUT, 10L);
+  curl_easy_setopt(curl_, CURLOPT_TIMEOUT, 300L);
 
   CURLcode res = curl_easy_perform(curl_);
   curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &last_response_code_);
@@ -66,7 +66,7 @@ std::string HttpClient::post(const std::string &url,
   curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &response);
   curl_easy_setopt(curl_, CURLOPT_TIMEOUT,
-                   10L); // 10 секунд достаточно для хода агента
+                   90L); // 90 секунд для надежности при работе с локальной LLM
 
   // Устанавливаем заголовки
   struct curl_slist *headers = nullptr;
