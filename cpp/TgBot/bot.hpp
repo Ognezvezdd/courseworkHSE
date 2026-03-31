@@ -32,14 +32,18 @@ private:
   void showMainMenu(int64_t chat_id);
   void showTicTacToeMenu(int64_t chat_id);
   void showMafiaMenu(int64_t chat_id);
+  void showBunkerMenu(int64_t chat_id);
 
   // Обработчики игр
   void handleTicTacToeGame(int64_t chat_id, UserState &state);
   void handleMafiaGame(int64_t chat_id, UserState &state);
+  void handleBunkerGame(int64_t chat_id, UserState &state);
 
   // Вспомогательные
   void formatMafiaResult(int64_t chat_id, const MafiaGameResult &result,
                          int bet_amount);
+  void formatBunkerResult(int64_t chat_id, const BunkerGameResult &result,
+                          int bet_amount);
   void sendMafiaChatLog(int64_t chat_id,
                         const std::vector<Mafia::ChatMessage> &chat_log);
 

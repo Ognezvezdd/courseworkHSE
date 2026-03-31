@@ -124,12 +124,13 @@ public:
   std::vector<Mafia::ChatMessage>
   getMafiaChatHistory(const std::string &game_id);
 
-  * @brief Запуск игры в Бункер
+  /**
+   * @brief Запуск игры в Бункер
    * @param agents Список агентов для игры (минимум 3)
    * @param bunker_capacity Вместимость бункера (сколько может выжить)
    * @param bet_amount Размер ставки
    * @return Результат игры в Бункер
-   
+   */
   BunkerGameResult runBunkerGame(const std::vector<std::string>& agents,
                                  int bunker_capacity = 4,
                                  int bet_amount = 100);

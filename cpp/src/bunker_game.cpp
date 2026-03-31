@@ -1,5 +1,6 @@
 #include "bunker_game.hpp"
 #include <algorithm>
+#include <cctype>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -56,6 +57,32 @@ bool BunkerGame::initialize(const std::vector<std::shared_ptr<IBunkerAgent>>& ag
                      std::to_string(disaster_timer_) + " раундов.");
     
     return true;
+}
+
+bool BunkerGame::addPlayer(std::shared_ptr<IBunkerAgent> agent) {
+    if (!agent) return false;
+    if (game_over_) return false;
+    if (!players_.empty() && current_phase_ != GamePhase::WAITING) return false;
+
+    agents_.push_back(agent);
+    int player_id = static_cast<int>(agents_.size());
+    PlayerCharacter character = generateRandomCharacter(player_id, agent->getName());
+    players_.push_back(character);
+    agent->setCharacter(character);
+    agent->updateKnowledge("Ваш персонаж: " + character.getProfessionString() +
+                           ", возраст " + std::to_string(character.age) +
+                           ", здоровье: " + character.getHealthString());
+    return true;
+}
+
+void BunkerGame::submitVote(int voter_id, int target_id) {
+    if (current_phase_ != GamePhase::VOTING) return;
+    int voter_idx = findPlayerIndex(voter_id);
+    int target_idx = findPlayerIndex(target_id);
+    if (voter_idx == -1 || target_idx == -1) return;
+    if (!players_[voter_idx].is_alive) return;
+    if (!players_[target_idx].is_alive) return;
+    voting_results_[target_id]++;
 }
 
 PlayerCharacter BunkerGame::generateRandomCharacter(int player_id, const std::string& player_name) {
@@ -418,6 +445,31 @@ std::string professionToString(Profession p) {
     }
 }
 
+static std::string normalize(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (unsigned char c : s) {
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '-' || c == '_') continue;
+        out.push_back(static_cast<char>(std::tolower(c)));
+    }
+    return out;
+}
+
+Profession stringToProfession(const std::string& str) {
+    const std::string s = normalize(str);
+    if (s == "doctor" || s == "врач") return Profession::DOCTOR;
+    if (s == "engineer" || s == "инженер") return Profession::ENGINEER;
+    if (s == "military" || s == "военный") return Profession::MILITARY;
+    if (s == "teacher" || s == "учитель") return Profession::TEACHER;
+    if (s == "chef" || s == "повар") return Profession::CHEF;
+    if (s == "student" || s == "студент") return Profession::STUDENT;
+    if (s == "homeless" || s == "бездомный") return Profession::HOMELESS;
+    if (s == "pilot" || s == "пилот") return Profession::PILOT;
+    if (s == "firefighter" || s == "пожарный") return Profession::FIREFIGHTER;
+    if (s == "police" || s == "полицейский") return Profession::POLICE;
+    return Profession::UNKNOWN;
+}
+
 Profession getRandomProfession() {
     static std::vector<Profession> professions = {
         Profession::DOCTOR, Profession::ENGINEER, Profession::MILITARY,
@@ -438,6 +490,15 @@ Health getRandomHealth() {
     return healths[rng() % healths.size()];
 }
 
+Health stringToHealth(const std::string& str) {
+    const std::string s = normalize(str);
+    if (s == "healthy" || s == "здоров") return Health::HEALTHY;
+    if (s == "sick" || s == "болен") return Health::SICK;
+    if (s == "injured" || s == "ранен") return Health::INJURED;
+    if (s == "disabled" || s == "инвалид") return Health::DISABLED;
+    return Health::HEALTHY;
+}
+
 Skill getRandomSkill() {
     static std::vector<Skill> skills = {
         Skill::MEDICINE, Skill::ENGINEERING, Skill::COMBAT,
@@ -446,6 +507,19 @@ Skill getRandomSkill() {
     };
     static std::mt19937 rng(std::time(nullptr));
     return skills[rng() % skills.size()];
+}
+
+Skill stringToSkill(const std::string& str) {
+    const std::string s = normalize(str);
+    if (s == "medicine" || s == "медицина") return Skill::MEDICINE;
+    if (s == "engineering" || s == "инженерия") return Skill::ENGINEERING;
+    if (s == "combat" || s == "бой") return Skill::COMBAT;
+    if (s == "cooking" || s == "кулинария") return Skill::COOKING;
+    if (s == "teaching" || s == "обучение") return Skill::TEACHING;
+    if (s == "piloting" || s == "пилотирование") return Skill::PILOTING;
+    if (s == "negotiation" || s == "переговоры") return Skill::NEGOTIATION;
+    if (s == "survival" || s == "выживание") return Skill::SURVIVAL;
+    return Skill::SURVIVAL;
 }
 
 Personality getRandomPersonality() {
@@ -497,6 +571,17 @@ std::string personalityToString(Personality p) {
         case Personality::PARANOID: return "Параноик";
         default: return "Неизвестно";
     }
+}
+
+Personality stringToPersonality(const std::string& str) {
+    const std::string s = normalize(str);
+    if (s == "calm" || s == "спокойный") return Personality::CALM;
+    if (s == "aggressive" || s == "агрессивный") return Personality::AGGRESSIVE;
+    if (s == "panicker" || s == "паникер" || s == "паникёр") return Personality::PANICKER;
+    if (s == "charismatic" || s == "харизматичный") return Personality::CHARISMATIC;
+    if (s == "selfish" || s == "эгоистичный") return Personality::SELFISH;
+    if (s == "paranoid" || s == "параноик") return Personality::PARANOID;
+    return Personality::CALM;
 }
 
 } // namespace BunkerUtils

@@ -72,6 +72,7 @@ struct PlayerCharacter {
     std::vector<Skill> skills;
     Personality personality;
     std::optional<std::string> secret;
+    std::vector<std::string> known_info;
     bool is_alive;
     bool is_exiled;
     

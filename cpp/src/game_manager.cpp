@@ -67,6 +67,7 @@ std::vector<std::string> GameManager::getAvailableBunkerAgents() {
   agents.push_back("bunker_aggressive");
   agents.push_back("bunker_survivalist");
   agents.push_back("bunker_diplomat");
+  agents.push_back("bunker_llm");
   return agents;
 }
 
@@ -282,6 +283,14 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
     }
   }
 
+  // Стараемся включать LLM-агента хотя бы один раз, если он доступен в пуле.
+  bool has_llm_in_pool = std::find(pool.begin(), pool.end(), "bunker_llm") != pool.end();
+  bool has_llm_selected = std::find(selected_agent_names.begin(), selected_agent_names.end(),
+                                    "bunker_llm") != selected_agent_names.end();
+  if (has_llm_in_pool && !has_llm_selected && !selected_agent_names.empty()) {
+    selected_agent_names[0] = "bunker_llm";
+  }
+
   MafiaGameResult result;
   result.bet_amount = bet_amount;
   result.win_amount = 0;
@@ -389,7 +398,7 @@ GameManager::runBunkerGame(const std::vector<std::string> &agents,
   result.survivors = game_data.survivors;
   result.exiled_players = game_data.exiled_players;
   result.game_log = game_data.game_log;
-  result.chat_log = game_data.chat_log;
+  result.chat_log = game_data.chat_history;
   result.total_rounds = game_data.total_rounds;
   result.survivors_count = game_data.survivors_count;
 
@@ -446,7 +455,7 @@ std::vector<std::shared_ptr<Bunker::IBunkerAgent>>
 GameManager::createBunkerAgents(const std::vector<std::string> &agent_names) {
   std::vector<std::shared_ptr<Bunker::IBunkerAgent>> agents;
   for (const auto &name : agent_names) {
-    agents.push_back(std::make_shared<BunkerAgentProxy>(name, api_url_));
+    agents.push_back(std::make_shared<Bunker::BunkerAgentProxy>(name, api_url_));
   }
   return agents;
 }

@@ -18,6 +18,8 @@ set(SOURCES
     src/http_client.cpp
     src/mafia_game.cpp
     src/mafia_agent_proxy.cpp
+    src/bunker_game.cpp
+    src/bunker_agent_proxy.cpp
 )
 
 add_executable(tg_bot ${SOURCES})

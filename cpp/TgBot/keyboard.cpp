@@ -5,7 +5,7 @@ using namespace std;
 
 string Keyboard::createMainMenu() {
   vector<vector<string>> buttons = {
-      {"🎮 Крестики-нолики"}, {"🎭 Мафия"}, {"📊 Статистика"}, {"⚙️ Настройки"}};
+      {"🎮 Крестики-нолики"}, {"🎭 Мафия"}, {"🛡️ Бункер"}, {"📊 Статистика"}, {"⚙️ Настройки"}};
   return createReplyKeyboard(buttons);
 }
 
@@ -74,6 +74,32 @@ string Keyboard::createMafiaAgentsMenu() {
                                     {"citizen_social"},
                                     {"citizen_cautious"},
                                     {"◀️ Назад"}};
+  return createReplyKeyboard(buttons);
+}
+
+// === Бункер ===
+
+string Keyboard::createBunkerMenu() {
+  vector<vector<string>> buttons = {{"🏚️ Вместимость бункера"},
+                                    {"💰 Ставка бункер"},
+                                    {"📋 Правила бункера"},
+                                    {"▶️ Запустить бункер"},
+                                    {"◀️ Назад в главное меню"}};
+  return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createBunkerCapacityMenu() {
+  vector<vector<string>> buttons = {{"Вместимость 3"}, {"Вместимость 4"},
+                                    {"Вместимость 5"}, {"Вместимость 6"},
+                                    {"◀️ Назад"}};
+  return createReplyKeyboard(buttons);
+}
+
+string Keyboard::createBunkerBetsMenu() {
+  vector<vector<string>> buttons = {
+      {"Ставка бункер 10"},  {"Ставка бункер 50"},   {"Ставка бункер 100"},
+      {"Ставка бункер 500"}, {"Ставка бункер 1000"}, {"Ставка бункер 5000"},
+      {"◀️ Назад"}};
   return createReplyKeyboard(buttons);
 }
 
