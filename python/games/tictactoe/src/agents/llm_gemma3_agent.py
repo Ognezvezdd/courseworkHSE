@@ -24,21 +24,19 @@ class LLMAgent(BaseAgent):
         
         moves_str = ", ".join([f"[{r}, {c}]" for r, c in valid_moves])
         
-        prompt = f"""You are playing Tic-Tac-Toe on a 5x5 board. Your symbol is '{player_symbol}'.
-To win, you need 4 symbols in a row (horizontally, vertically, or diagonally).
-
-Current board state:
-{board_str}
-Valid moves available (row, column):
-{moves_str}
-
-YOUR TASK:
-Choose ONE valid move from the list of valid moves to maximize your chance of winning or blocking the opponent.
-You must respond with ONLY a valid JSON object. No explanation, no markdown tags. Do not write ```json .
-Format:
-{{"row": <int>, "col": <int>}}
-"""
-        return prompt
+        prompt_path = os.path.join(os.path.dirname(__file__), "../../../../prompts/tictactoe/default.txt")
+        if not os.path.exists(prompt_path):
+            # Fallback if path logic differs in docker
+            prompt_path = "/app/prompts/tictactoe/default.txt"
+            
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                template = f.read()
+            return template.format(player_symbol=player_symbol, board_str=board_str, moves_str=moves_str)
+        except Exception as e:
+            print(f"Error loading prompt from {prompt_path}: {e}")
+            # Minimal hardcoded fallback
+            return f"Play Tic-Tac-Toe. Symbol: {player_symbol}. Board:\n{board_str}\nMoves: {moves_str}"
 
     def select_action(self, board: list[list[str]], player_symbol: str) -> tuple[int, int]:
         valid_moves = self._get_valid_moves(board)

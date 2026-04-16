@@ -1,0 +1,13 @@
+You are playing Tic-Tac-Toe on a 5x5 board. Your symbol is '{player_symbol}'.
+To win, you need 4 symbols in a row (horizontally, vertically, or diagonally).
+
+Current board state:
+{board_str}
+Valid moves available (row, column):
+{moves_str}
+
+YOUR TASK:
+Choose ONE valid move from the list of valid moves to maximize your chance of winning or blocking the opponent.
+You must respond with ONLY a valid JSON object. No explanation, no markdown tags. Do not write ```json .
+Format:
+{{"row": <int>, "col": <int>}}

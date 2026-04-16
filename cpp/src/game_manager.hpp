@@ -11,8 +11,6 @@
 struct GameResult {
   std::string winner = "error";
   int steps = 0;
-  int bet_amount = 0;
-  int win_amount = 0;
   std::string board_state = "";
   std::string image_url = "";
   std::string image_filename = "";
@@ -31,8 +29,6 @@ struct MafiaGameResult {
   int surviving_players = 0;
   std::string image_url = "";   // URL итогового изображения
   std::string json_output = ""; // JSON для API
-  int bet_amount = 0;
-  int win_amount = 0;
 };
 
 /**
@@ -60,12 +56,11 @@ public:
    * @brief Запуск игры в мафию
    * @param agents Список агентов для игры (6-12 агентов)
    * @param num_players Количество игроков
-   * @param bet_amount Размер ставки
    * @param use_chat Использовать ли чат между агентами
    * @return Результат игры в мафию
    */
   MafiaGameResult runMafiaGame(const std::vector<std::string> &agents,
-                               int num_players = 6, int bet_amount = 100,
+                               int num_players = 6,
                                bool use_chat = true);
 
   /**

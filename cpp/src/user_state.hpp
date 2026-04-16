@@ -8,7 +8,6 @@ struct UserState {
   std::string selected_game;
   std::string selected_agent;
   std::string opponent_agent;
-  int bet_amount;
 
   // Для мафии
   std::string game_mode; // "tic_tac_toe" или "mafia"
@@ -17,7 +16,7 @@ struct UserState {
 
   UserState()
       : selected_game("tic_tac_toe_5x5"), selected_agent("random"),
-        opponent_agent("random"), bet_amount(100), game_mode("tic_tac_toe"),
+        opponent_agent("random"), game_mode("tic_tac_toe"),
         mafia_players(6) {}
 };
 

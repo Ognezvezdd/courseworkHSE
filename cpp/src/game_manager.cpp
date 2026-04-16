@@ -69,7 +69,6 @@ std::vector<std::string> GameManager::getAvailableGames() {
 
 GameResult GameManager::parseGameResponse(const std::string &json_response) {
   GameResult result;
-  result.bet_amount = 100;
   result.json_output = json_response;
 
   Json::Value root;
@@ -92,17 +91,6 @@ GameResult GameManager::parseGameResponse(const std::string &json_response) {
     result.steps = 0;
   }
 
-  if (result.winner == "X") {
-    result.win_amount = result.bet_amount * 2;
-  } else if (result.winner == "O") {
-    result.win_amount = 0;
-  } else if (result.winner == "draw") {
-    result.win_amount = result.bet_amount;
-  } else {
-    result.win_amount = 0;
-    result.winner = "error";
-  }
-
   return result;
 }
 
@@ -110,8 +98,7 @@ MafiaGameResult
 GameManager::parseMafiaResponse(const std::string &json_response) {
   MafiaGameResult result;
   result.json_output = json_response;
-  result.bet_amount = 100;
-  result.win_amount = 0;
+  result.json_output = json_response;
 
   Json::Value root;
   Json::CharReaderBuilder reader;
@@ -155,16 +142,6 @@ GameManager::parseMafiaResponse(const std::string &json_response) {
     if (!relative_url.empty()) {
       result.image_url = api_url_ + relative_url;
     }
-
-    // Расчет выигрыша
-    if (result.winner == "citizens") {
-      result.win_amount =
-          result.bet_amount * 3; // Больший выигрыш за сложную игру
-    } else if (result.winner == "mafia") {
-      result.win_amount = 0;
-    } else {
-      result.winner = "error";
-    }
   } else {
     std::cerr << "Failed to parse mafia response JSON: " << errors << std::endl;
     result.winner = "error";
@@ -197,8 +174,7 @@ GameResult GameManager::runGame(const std::string &agent_x,
     GameResult error_result;
     error_result.winner = "error";
     error_result.steps = 0;
-    error_result.bet_amount = 100;
-    error_result.win_amount = 0;
+    error_result.steps = 0;
     error_result.json_output = "ERROR: API request failed";
     return error_result;
   }
@@ -208,7 +184,7 @@ GameResult GameManager::runGame(const std::string &agent_x,
 
 MafiaGameResult
 GameManager::runMafiaGame(const std::vector<std::string> &agents,
-                          int num_players, int bet_amount, bool use_chat) {
+                          int num_players, bool use_chat) {
 
   // Выбираем агентов (если их мало - дублируем)
   std::vector<std::string> selected_agent_names;
@@ -235,8 +211,6 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
   }
 
   MafiaGameResult result;
-  result.bet_amount = bet_amount;
-  result.win_amount = 0;
 
   // Создаем и инициализируем игру
   MafiaGame game(num_players);
@@ -273,8 +247,8 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
   result.total_days = game_data.total_days;
   result.surviving_players = game_data.surviving_players;
 
-  if (result.winner == "citizens")
-    result.win_amount = bet_amount * 3;
+  if (result.winner != "citizens" && result.winner != "mafia")
+    result.winner = "error";
 
   std::cout << "🏁 Mafia Game Finished. Winner: " << result.winner << std::endl;
 

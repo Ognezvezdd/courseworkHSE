@@ -207,19 +207,12 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
                 Keyboard::createTicTacToeMenu());
     return;
   }
-  if (state.bet_amount <= 0) {
-    sendMessage(chat_id, "⚠️ Сначала сделайте ставку!",
-                Keyboard::createTicTacToeMenu());
-    return;
-  }
 
   sendMessage(chat_id, "🎲 Запуск: " + state.selected_agent + " vs " +
-                           state.opponent_agent + " (ставка " +
-                           to_string(state.bet_amount) + ")...");
+                           state.opponent_agent + "...");
 
   GameResult result = game_manager_.runGame(
       state.selected_agent, state.opponent_agent, (int)time(nullptr));
-  result.bet_amount = state.bet_amount;
 
   stringstream ss;
   ss << "🏁 *Игра завершена!*\n\n";
@@ -229,14 +222,11 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
   ss << "⏱ Шагов: " << result.steps << "\n\n";
 
   if (result.winner == "X") {
-    ss << "💰 *ВЫ ВЫИГРАЛИ!*\n";
-    ss << "Вы получаете: " << (state.bet_amount * 2) << " очков";
+    ss << "🏆 *ПОБЕДА (X)!*";
   } else if (result.winner == "O") {
-    ss << "💸 *ВЫ ПРОИГРАЛИ*\n";
-    ss << "Удачи в следующий раз!";
+    ss << "🤖 *ПОБЕДИЛ ПРОТИВНИК (O)*";
   } else {
-    ss << "🤝 *НИЧЬЯ*\n";
-    ss << "Ставка " << state.bet_amount << " возвращена";
+    ss << "🤝 *НИЧЬЯ*";
   }
 
   // Отправка результата с изображением если есть
@@ -263,15 +253,9 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
 // ============================================================
 
 void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
-  if (state.bet_amount <= 0) {
-    sendMessage(chat_id, "⚠️ Сначала сделайте ставку!",
-                Keyboard::createMafiaMenu());
-    return;
-  }
 
   sendMessage(chat_id, "🎭 Запускаю мафию с " + to_string(state.mafia_players) +
-                           " игроками (ставка " + to_string(state.bet_amount) +
-                           ")...\n"
+                           " игроками...\n"
                            "Это может занять некоторое время.");
 
   try {
@@ -283,9 +267,9 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
     }
 
     MafiaGameResult result = game_manager_.runMafiaGame(
-        agents, state.mafia_players, state.bet_amount, true);
+        agents, state.mafia_players, true);
 
-    formatMafiaResult(chat_id, result, state.bet_amount);
+    formatMafiaResult(chat_id, result);
   } catch (const std::exception &e) {
     sendMessage(chat_id, "❌ Ошибка при запуске: " + string(e.what()),
                 Keyboard::createMafiaMenu());
@@ -296,18 +280,15 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
 }
 
 void TelegramBot::formatMafiaResult(int64_t chat_id,
-                                    const MafiaGameResult &result,
-                                    int bet_amount) {
+                                    const MafiaGameResult &result) {
   stringstream ss;
   ss << "🎭 *Игра в мафию завершена!*\n\n";
   ss << "🏆 Победитель: *";
 
   if (result.winner == "citizens") {
     ss << "МИРНЫЕ ЖИТЕЛИ* 🎉\n";
-    ss << "💰 Выигрыш: " << result.win_amount << " очков\n";
   } else if (result.winner == "mafia") {
     ss << "МАФИЯ* 💀\n";
-    ss << "Ставка проиграна\n";
   } else {
     ss << "ОШИБКА*\n";
   }
@@ -459,33 +440,6 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-    // --- Ставка ---
-    if (text == "💰 Ставка") {
-      sendMessage(chat_id,
-                  "💰 Выберите размер ставки:", Keyboard::createTTTBetsMenu());
-      return;
-    }
-    bool isBet =
-        (text.rfind("Ставка", 0) == 0 &&
-         text.find("мафия") == std::string::npos) ||
-        (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
-
-    if (isBet) {
-      std::string digits;
-      for (unsigned char c : text)
-        if (std::isdigit(c))
-          digits += char(c);
-
-      if (!digits.empty()) {
-        state.bet_amount = std::stoi(digits);
-        sendMessage(chat_id, "✅ Ставка: " + digits + " очков",
-                    Keyboard::createTicTacToeMenu());
-      } else {
-        sendMessage(chat_id, "❌ Неверная ставка",
-                    Keyboard::createTTTBetsMenu());
-      }
-      return;
-    }
 
     // --- Запуск ---
     if (text == "▶️ Запустить игру") {
@@ -536,33 +490,6 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-    // --- Ставка (мафия) ---
-    if (text == "💰 Ставка мафия") {
-      sendMessage(chat_id, "💰 Выберите размер ставки:",
-                  Keyboard::createMafiaBetsMenu());
-      return;
-    }
-
-    bool isMafiaBet =
-        (text.rfind("Ставка мафия", 0) == 0) ||
-        (!text.empty() && std::isdigit((unsigned char)text[0])); // просто число
-
-    if (isMafiaBet) {
-      std::string digits;
-      for (unsigned char c : text)
-        if (std::isdigit(c))
-          digits += char(c);
-
-      if (!digits.empty()) {
-        state.bet_amount = std::stoi(digits);
-        sendMessage(chat_id, "✅ Ставка: " + digits + " очков",
-                    Keyboard::createMafiaMenu());
-      } else {
-        sendMessage(chat_id, "❌ Неверная ставка",
-                    Keyboard::createMafiaBetsMenu());
-      }
-      return;
-    }
 
     // --- Правила ---
     if (text == "📋 Правила") {
@@ -572,8 +499,7 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                      "• Ночью мафия убивает, шериф проверяет, доктор лечит\n"
                      "• Днём игроки обсуждают и голосуют\n"
                      "• Мафия побеждает, когда их не меньше мирных\n"
-                     "• Мирные побеждают, когда вся мафия изгнана\n\n"
-                     "💰 Ставка x3 за победу мирных";
+                     "• Мирные побеждают, когда вся мафия изгнана";
       sendMessage(chat_id, rules, Keyboard::createMafiaMenu(), true);
       return;
     }

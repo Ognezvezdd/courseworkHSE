@@ -14,12 +14,12 @@ public:
   static std::string createTicTacToeMenu();
   static std::string createTTTAgentMenu();
   static std::string createTTTOpponentMenu();
-  static std::string createTTTBetsMenu();
+  static std::string createTTTOpponentMenu();
 
   // Мафия
   static std::string createMafiaMenu();
   static std::string createMafiaPlayersMenu();
-  static std::string createMafiaBetsMenu();
+  static std::string createMafiaPlayersMenu();
   static std::string createMafiaAgentsMenu();
 
   // Общие

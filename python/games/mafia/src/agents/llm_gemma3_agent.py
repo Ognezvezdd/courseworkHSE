@@ -26,27 +26,24 @@ class LLMAgent:
         if not chat_str:
             chat_str = "No chat history yet."
 
-        prompt = f"""You are playing Mafia game. Your name is '{self.name}'. Your game role is '{my_role}'.
-Current phase: {game_state.phase}. Day: {game_state.day}.
-Alive players: {players_str}.
+        prompt_path = os.path.join(os.path.dirname(__file__), "../../../../prompts/mafia/default.txt")
+        if not os.path.exists(prompt_path):
+            prompt_path = "/app/prompts/mafia/default.txt"
 
-Recent chat history (max 10 messages):
-{chat_str}
-
-YOUR TASK:
-Choose ONE action. 
-- If phase is DAY_DISCUSSION, action_type="CHAT_MESSAGE" and provide your message in text_message.
-- If phase is DAY_VOTING, action_type="VOTE_KILL" and provide target_id (choose an ID from Alive players).
-- If phase is NIGHT_MAFIA and you are MAFIA/DON, action_type="MAFIA_KILL" and provide target_id.
-- If phase is NIGHT_SHERIFF and you are SHERIFF, action_type="SHERIFF_CHECK" and provide target_id.
-- If phase is NIGHT_DOCTOR and you are DOCTOR, action_type="DOCTOR_HEAL" and provide target_id.
-- Otherwise, use action_type="PASS".
-
-OUTPUT FORMAT:
-Respond exactly ONLY with valid JSON. No markdown tags, no explanations. Do not include ```json...```:
-{{"action_type": "valid_action", "target_id": 1, "text_message": "..."}}
-"""
-        return prompt
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                template = f.read()
+            return template.format(
+                self=self, 
+                my_role=my_role, 
+                game_phase=game_state.phase, 
+                game_day=game_state.day, 
+                players_str=players_str, 
+                chat_str=chat_str
+            )
+        except Exception as e:
+            print(f"Error loading prompt from {prompt_path}: {e}")
+            return f"Playing Mafia. Role: {my_role}. Players: {players_str}. History: {chat_str}"
 
     def parse_action(self, text: str, game_state: GameState) -> AgentAction:
         try:

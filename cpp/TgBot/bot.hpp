@@ -38,8 +38,7 @@ private:
   void handleMafiaGame(int64_t chat_id, UserState &state);
 
   // Вспомогательные
-  void formatMafiaResult(int64_t chat_id, const MafiaGameResult &result,
-                         int bet_amount);
+  void formatMafiaResult(int64_t chat_id, const MafiaGameResult &result);
   void sendMafiaChatLog(int64_t chat_id,
                         const std::vector<Mafia::ChatMessage> &chat_log);
 
