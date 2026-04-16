@@ -3,6 +3,7 @@
 
 #include "http_client.hpp"
 #include "mafia_game.hpp"
+#include "bunker_game.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +30,19 @@ struct MafiaGameResult {
   int surviving_players = 0;
   std::string image_url = "";   // URL итогового изображения
   std::string json_output = ""; // JSON для API
+};
+
+struct BunkerGameResult {
+  std::string winner = "error";   // "survive", "disaster", или "error"
+  std::vector<std::string> survivors;
+  std::vector<std::string> exiled_players;
+  std::vector<Bunker::ChatMessage> chat_log;
+  std::vector<std::string> game_log;
+  int total_rounds = 0;
+  int survivors_count = 0;
+  int bet_amount = 0;
+  int win_amount = 0;
+  std::string json_output = "";
 };
 
 /**
@@ -105,6 +119,23 @@ public:
   std::vector<Mafia::ChatMessage>
   getMafiaChatHistory(const std::string &game_id);
 
+  /**
+   * @brief Запуск игры в Бункер
+   * @param agents Список агентов для игры (минимум 3)
+   * @param bunker_capacity Вместимость бункера (сколько может выжить)
+   * @param bet_amount Размер ставки
+   * @return Результат игры в Бункер
+   */
+  BunkerGameResult runBunkerGame(const std::vector<std::string>& agents,
+                                 int bunker_capacity = 4,
+                                 int bet_amount = 100);
+
+  /**
+   * @brief Получить список доступных агентов для Бункера
+   * @return Список агентов
+   */
+  std::vector<std::string> getAvailableBunkerAgents();
+
 private:
   std::string api_url_;
   HttpClient http_client_;
@@ -130,6 +161,16 @@ private:
    */
   std::vector<std::shared_ptr<Mafia::IMafiaAgent>>
   createMafiaAgents(const std::vector<std::string> &agent_names);
+
+  /**
+   * @brief Создать агентов для игры в Бункер
+   * @param agent_names Имена агентов
+   * @return Вектор агентов
+   */
+  std::vector<std::shared_ptr<Bunker::IBunkerAgent>>
+  createBunkerAgents(const std::vector<std::string>& agent_names);
+
+  BunkerGameResult parseBunkerResponse(const std::string& json_response);
 };
 
 #endif // GAME_MANAGER_HPP

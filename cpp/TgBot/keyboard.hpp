@@ -19,6 +19,11 @@ public:
   static std::string createMafiaMenu();
   static std::string createMafiaPlayersMenu();
   static std::string createMafiaAgentsMenu();
+  
+  // Бункер
+  static std::string createBunkerMenu();
+  static std::string createBunkerCapacityMenu();
+  static std::string createBunkerBetsMenu();
 
   // Общие
   static std::string removeKeyboard();
