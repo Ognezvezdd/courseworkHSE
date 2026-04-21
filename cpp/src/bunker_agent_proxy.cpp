@@ -224,6 +224,9 @@ BunkerAction BunkerAgentProxy::getAction(
     for (const auto &i : known_info)
       known_json.append(i);
     request["known_info"] = known_json;
+    if (!openai_api_key_.empty()) {
+        request["openai_api_key"] = openai_api_key_;
+    }
 
     Json::StreamWriterBuilder writer;
     std::string body = Json::writeString(writer, request);
@@ -318,6 +321,9 @@ std::string BunkerAgentProxy::getChatMessage(
     for (const auto &i : known_info)
       known_json.append(i);
     request["known_info"] = known_json;
+    if (!openai_api_key_.empty()) {
+        request["openai_api_key"] = openai_api_key_;
+    }
 
     Json::StreamWriterBuilder writer;
     std::string body = Json::writeString(writer, request);

@@ -32,6 +32,7 @@ public:
 
   void updateKnowledge(const std::string &info) override;
   void setCharacter(const PlayerCharacter &character) override;
+  void setOpenAIKey(const std::string &key) { openai_api_key_ = key; }
 
 private:
   int pickVoteTarget(const std::vector<PlayerCharacter> &players,
@@ -42,6 +43,7 @@ private:
 
   std::string name_;
   std::string api_url_;
+  std::string openai_api_key_;
   PlayerCharacter my_character_;
   std::vector<std::string> knowledge_;
   std::mt19937 rng_;

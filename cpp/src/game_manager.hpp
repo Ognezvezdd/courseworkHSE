@@ -124,7 +124,8 @@ public:
    * @return Результат игры в Бункер
    */
   BunkerGameResult runBunkerGame(const std::vector<std::string>& agents,
-                                 int bunker_capacity = 4);
+                                 int bunker_capacity = 4,
+                                 const std::string& openai_key = "");
 
   /**
    * @brief Получить список доступных агентов для Бункера
@@ -164,7 +165,7 @@ private:
    * @return Вектор агентов
    */
   std::vector<std::shared_ptr<Bunker::IBunkerAgent>>
-  createBunkerAgents(const std::vector<std::string>& agent_names);
+  createBunkerAgents(const std::vector<std::string>& agent_names, const std::string& openai_key = "");
 
   BunkerGameResult parseBunkerResponse(const std::string& json_response);
 };

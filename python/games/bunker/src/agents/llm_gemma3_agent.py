@@ -1,34 +1,33 @@
 import json
 import os
 import re
-import requests
 from typing import Dict, Any, List
 
 from ..models import BunkerAction, BunkerState
+from games.common.llm_client import LLMClient
+from ..logger import bunker_logger
 
 MODEL_MAP = {
-    "gemma3": "gemma3",
-    "llama3.2_1b": "llama3.2:1b",
-    "llama3.2_3b": "llama3.2:3b",
-    "phi3_mini": "phi3:mini",
-    "phi4_mini": "phi4-mini",
-    "qwen2.5_1.5b": "qwen2.5:1.5b",
+    "gemma3": ("ollama", "gemma3"),
+    "llama3.2_1b": ("ollama", "llama3.2:1b"),
+    "llama3.2_3b": ("ollama", "llama3.2:3b"),
+    "phi3_mini": ("ollama", "phi3:mini"),
+    "phi4_mini": ("ollama", "phi4-mini"),
+    "qwen2.5_1.5b": ("ollama", "qwen2.5:1.5b"),
+    "gpt4o_mini": ("openai", "gpt-4o-mini"),
+    "gpt4o": ("openai", "gpt-4o"),
 }
 
 class BunkerLLMAgent:
-    def __init__(self, name: str, model: str = "gemma3", personality: str = "default"):
+    def __init__(self, name: str, model: str = "gemma3", personality: str = "default", openai_api_key: str = None):
         self.name = name
-        # Мапим короткое имя модели в полное имя для Ollama
-        self.model_alias = model
-        self.ollama_model = MODEL_MAP.get(model, model)
+        provider, model_full = MODEL_MAP.get(model, ("ollama", model))
+        self.client = LLMClient(provider=provider, model=model_full, api_key=openai_api_key)
         self.personality = personality
-        self._last_messages = [] # Для анти-спама
+        self._last_messages = [] 
 
     def _build_prompt(self, state: BunkerState) -> str:
         alive = [p for p in state.players if p.is_alive]
-        
-        # Анонимизация имен в списке живых (в бункере имена обычно передаются как есть, 
-        # но для бенчмарка лучше использовать Player_N если мы хотим полной чистоты)
         alive_str = "\n".join(
             [
                 f"- [ID:{p.player_id}] Player_{p.player_id}; проф: {p.profession}; "
@@ -37,17 +36,15 @@ class BunkerLLMAgent:
             ]
         ) or "нет живых игроков"
 
-        # Анонимизируем историю чата
         recent_chat = state.chat_history[-12:]
         chat_lines = []
         for m in recent_chat:
-            name = f"Player_{m.player_id}" if m.player_id != -1 else m.player_name
-            chat_lines.append(f"{name}: {m.text}")
+            p_name = f"Player_{m.player_id}" if m.player_id != -1 else m.player_name
+            chat_lines.append(f"{p_name}: {m.text}")
         chat_str = "\n".join(chat_lines) or "чат пуст"
 
         prompt_dir = os.path.join(os.path.dirname(__file__), "../../../../prompts/bunker")
-        prompt_file = f"{self.personality}.txt"
-        prompt_path = os.path.join(prompt_dir, prompt_file)
+        prompt_path = os.path.join(prompt_dir, f"{self.personality}.txt")
         
         if not os.path.exists(prompt_path):
             prompt_path = os.path.join(prompt_dir, "default.txt")
@@ -73,17 +70,40 @@ class BunkerLLMAgent:
                 chat_str=chat_str,
                 known_info="\n".join(state.known_info) if state.known_info else "Нет дополнительной информации."
             )
-        except Exception as e:
+        except Exception:
             return f"Ты — Player_{state.my_player_id}. Фаза: {state.phase}. Твоя цель — выжить. Выдавай ТОЛЬКО JSON."
+
+    def decide(self, state: BunkerState) -> BunkerAction:
+        prompt = self._build_prompt(state)
+        # Добавляем инструкцию про Chain of Thought для логгера
+        full_prompt = prompt + "\n\nПеред тем как выдать JSON, напиши кратко свои рассуждения (Thinking Process) в свободном стиле, а затем сам JSON в блоке ```json...```."
+        
+        response_text = self.client.call(full_prompt)
+        
+        # Разделяем рассуждение и JSON
+        thinking = ""
+        json_content = response_text
+        
+        m = re.search(r"```json(.*?)```", response_text, re.DOTALL)
+        if m:
+            json_content = m.group(1).strip()
+            thinking = response_text[:m.start()].strip()
+            # Убираем возможные "рассуждения" за пределами блока
+        else:
+            # Если блока нет, пробуем найти просто фигурные скобки
+            m_braces = re.search(r"\{.*\}", response_text, re.DOTALL)
+            if m_braces:
+                json_content = m_braces.group(0)
+                thinking = response_text[:m_braces.start()].strip()
+
+        # Логируем
+        bunker_logger.log_interaction(self.name, prompt, json_content, thinking)
+        
+        return self._parse(json_content, state)
 
     def _parse(self, text: str, state: BunkerState) -> BunkerAction:
         try:
-            # Ищем JSON блок
-            m = re.search(r"\{.*\}", text, re.DOTALL)
-            if not m:
-                return self._fallback_action(state)
-            
-            data = json.loads(m.group(0))
+            data = json.loads(text)
             action_type = str(data.get("action_type", "PASS")).upper()
             target_id = data.get("target_id", -1)
             try:
@@ -93,16 +113,14 @@ class BunkerLLMAgent:
                 
             message = str(data.get("text_message", ""))
             
-            # Валидация
             if action_type == "VOTE_EXILE":
                 alive_ids = {p.player_id for p in state.players if p.is_alive and p.player_id != state.my_player_id}
                 if target_id not in alive_ids:
                     return self._fallback_action(state)
             
-            # Анти-спам для сообщений
             if message:
                 if message in self._last_messages:
-                    message = "" # Не повторяемся
+                    message = "" 
                 else:
                     self._last_messages.append(message)
                     if len(self._last_messages) > 5:
@@ -120,26 +138,3 @@ class BunkerLLMAgent:
                 target = random.choice(alive_others).player_id
                 return BunkerAction(action_type="VOTE_EXILE", target_id=target)
         return BunkerAction(action_type="PASS")
-
-    def decide(self, state: BunkerState) -> BunkerAction:
-        prompt = self._build_prompt(state)
-        api_url = os.getenv("OLLAMA_API_URL", "http://host.docker.internal:11434/api/generate")
-        
-        payload = {
-            "model": self.ollama_model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "num_predict": 256
-            }
-        }
-
-        try:
-            r = requests.post(api_url, json=payload, timeout=60)
-            r.raise_for_status()
-            text = r.json().get("response", "")
-            return self._parse(text, state)
-        except Exception as e:
-            print(f"❌ Ошибка вызова Ollama ({self.ollama_model}): {e}")
-            return self._fallback_action(state)

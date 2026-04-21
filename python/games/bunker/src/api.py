@@ -17,6 +17,7 @@ class BunkerAgentRequest(BaseModel):
     chat_history: List[dict]
     my_character: dict
     known_info: List[str]
+    openai_api_key: str = None
 
 
 class ChatResponse(BaseModel):
@@ -83,6 +84,8 @@ def get_personality_and_model(agent_type: str):
     elif "PHI3" in name_upper: model = "phi3_mini"
     elif "QWEN" in name_upper: model = "qwen2.5_1.5b"
     elif "GEMMA" in name_upper: model = "gemma3"
+    elif "GPT4O_MINI" in name_upper: model = "gpt4o_mini"
+    elif "GPT4O" in name_upper: model = "gpt4o"
     
     return personality, model
 
@@ -105,7 +108,7 @@ async def bunker_agent_action(req: BunkerAgentRequest):
     # Проверяем agent_type, так как agent_name теперь анонимизирован (Player_N)
     if "LLM" in req.agent_type.upper() or "BUNKER" in req.agent_type.upper():
         pers, model = get_personality_and_model(req.agent_type)
-        action = BunkerLLMAgent(req.agent_name, model=model, personality=pers).decide(state)
+        action = BunkerLLMAgent(req.agent_name, model=model, personality=pers, openai_api_key=req.openai_api_key).decide(state)
         # safety-check target
         if action.action_type == "VOTE_EXILE":
             alive_ids = {p.player_id for p in state.players if p.is_alive and p.player_id != state.my_player_id}
@@ -121,7 +124,7 @@ async def bunker_agent_chat(req: BunkerAgentRequest):
     state = build_state(req)
     if "LLM" in req.agent_type.upper() or "BUNKER" in req.agent_type.upper():
         pers, model = get_personality_and_model(req.agent_type)
-        action = BunkerLLMAgent(req.agent_name, model=model, personality=pers).decide(state)
+        action = BunkerLLMAgent(req.agent_name, model=model, personality=pers, openai_api_key=req.openai_api_key).decide(state)
         message = (action.text_message or "").strip()
         if message:
             return ChatResponse(message=message[:400])

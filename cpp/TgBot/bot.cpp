@@ -102,6 +102,7 @@ void TelegramBot::sendMessage(int64_t chat_id, const string &text,
 
   Json::StreamWriterBuilder writer;
   writer["indentation"] = "";
+  writer["emitUTF8"] = true;
   string json_params = Json::writeString(writer, params);
 
   makeRequest("sendMessage", json_params);
@@ -119,6 +120,7 @@ void TelegramBot::sendPhoto(int64_t chat_id, const string &photo_url,
 
   Json::StreamWriterBuilder writer;
   writer["indentation"] = "";
+  writer["emitUTF8"] = true;
   string json_params = Json::writeString(writer, params);
 
   makeRequest("sendPhoto", json_params);
@@ -273,8 +275,8 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
       return;
     }
 
-    MafiaGameResult result = game_manager_.runMafiaGame(
-        agents, state.mafia_players, true);
+    MafiaGameResult result =
+        game_manager_.runMafiaGame(agents, state.mafia_players, true);
 
     formatMafiaResult(chat_id, result);
   } catch (const std::exception &e) {
@@ -375,7 +377,7 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
     }
 
     BunkerGameResult result = game_manager_.runBunkerGame(
-        agents, state.bunker_capacity);
+        agents, state.bunker_capacity, state.openai_api_key);
     formatBunkerResult(chat_id, result);
   } catch (const std::exception &e) {
     sendMessage(chat_id, "❌ Ошибка при запуске Бункера: " + string(e.what()),
@@ -482,10 +484,48 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                 Keyboard::createMainMenu());
     return;
   }
-  if (text == "⚙️ Настройки") {
-    sendMessage(chat_id, "⚙️ Настройки — в разработке.",
-                Keyboard::createMainMenu());
+  if (state.is_waiting_for_api_key) {
+    state.openai_api_key = text;
+    state.is_waiting_for_api_key = false;
+    string display_key = (text.length() > 5) ? text.substr(0, 5) : text;
+    sendMessage(chat_id, "✅ API-ключ успешно установлен (начинается с: " +
+                             display_key + "...)");
+    sendMessage(chat_id, "⚙️ *Настройки*", Keyboard::createSettingsMenu(), true);
     return;
+  }
+
+  if (text == "⚙️ Настройки") {
+    state.game_mode = "settings";
+    string msg = "⚙️ *Настройки платформы*\n\n";
+    if (!state.openai_api_key.empty()) {
+      msg += "🔑 OpenAI Key: `установлен` (****" +
+             state.openai_api_key.substr(state.openai_api_key.length() > 4
+                                             ? state.openai_api_key.length() - 4
+                                             : 0) +
+             ")\n";
+    } else {
+      msg += "🔑 OpenAI Key: `не установлен`\n";
+    }
+    sendMessage(chat_id, msg, Keyboard::createSettingsMenu(), true);
+    return;
+  }
+
+  if (state.game_mode == "settings") {
+    if (text == "🔑 Установить OpenAI Key") {
+      state.is_waiting_for_api_key = true;
+      sendMessage(chat_id,
+                  "⌨️ Пожалуйста, пришлите ваш OpenAI API Key "
+                  "(sk-...):\n\n_Примечание: Ключ будет использоваться только "
+                  "для ваших запросов в текущей сессии._",
+                  Keyboard::removeKeyboard(), true);
+      return;
+    }
+    if (text == "🗑️ Сбросить ключ") {
+      state.openai_api_key = "";
+      sendMessage(chat_id, "🗑️ API-ключ сброшен.",
+                  Keyboard::createSettingsMenu());
+      return;
+    }
   }
 
   // =============================================================
@@ -530,7 +570,6 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
                   Keyboard::createTicTacToeMenu());
       return;
     }
-
 
     // --- Запуск ---
     if (text == "▶️ Запустить игру") {
@@ -581,7 +620,6 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-
     // --- Правила ---
     if (text == "📋 Правила") {
       string rules = "🎭 *Правила Мафии:*\n\n"
@@ -598,8 +636,9 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
     if (text == "👥 Выбор агентов") {
       string markup = Keyboard::createMafiaAgentsMenu(
           game_manager_.getAvailableMafiaAgents(), state.mafia_agents);
-      sendMessage(chat_id, "👥 Выберите агентов для игры (текущий выбор: " +
-                               std::to_string(state.mafia_agents.size()) + ")",
+      sendMessage(chat_id,
+                  "👥 Выберите агентов для игры (текущий выбор: " +
+                      std::to_string(state.mafia_agents.size()) + ")",
                   markup);
       return;
     }
@@ -639,10 +678,11 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
         state.mafia_agents.push_back(clicked_agent);
       }
 
-      string markup = Keyboard::createMafiaAgentsMenu(
-          available_agents, state.mafia_agents);
-      sendMessage(chat_id, "👥 Выбранные агенты: " +
-                               std::to_string(state.mafia_agents.size()),
+      string markup =
+          Keyboard::createMafiaAgentsMenu(available_agents, state.mafia_agents);
+      sendMessage(chat_id,
+                  "👥 Выбранные агенты: " +
+                      std::to_string(state.mafia_agents.size()),
                   markup);
       return;
     }
@@ -755,6 +795,7 @@ void TelegramBot::run() {
 
       Json::StreamWriterBuilder writer;
       writer["indentation"] = "";
+      writer["emitUTF8"] = true;
       string json_request = Json::writeString(writer, request_params);
 
       string response = makeRequest("getUpdates", json_request);

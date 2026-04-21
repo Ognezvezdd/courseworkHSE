@@ -24,6 +24,9 @@ public:
   // Бункер
   static std::string createBunkerMenu();
   static std::string createBunkerCapacityMenu();
+  
+  // Настройки
+  static std::string createSettingsMenu();
 
   // Общие
   static std::string removeKeyboard();

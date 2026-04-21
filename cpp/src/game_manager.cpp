@@ -310,7 +310,7 @@ GameManager::getMafiaChatHistory(const std::string &game_id) {
 }
 
 BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agents,
-                                           int bunker_capacity) {
+                                           int bunker_capacity, const std::string& openai_key) {
   BunkerGameResult result;
 
   // Если агентов не передали, берем по умолчанию
@@ -321,7 +321,7 @@ BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agen
 
   // Создаем игру
   Bunker::BunkerGame game(bunker_capacity);
-  auto bunker_agents = createBunkerAgents(selected_agents);
+  auto bunker_agents = createBunkerAgents(selected_agents, openai_key);
 
   if (!game.initialize(bunker_agents)) {
     result.winner = "error";
@@ -353,14 +353,18 @@ BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agen
 
 std::vector<std::string> GameManager::getAvailableBunkerAgents() {
   return {"bunker_llm_rational",  "bunker_llm_aggressive", "bunker_llm_cooperative",
-          "bunker_llm_emotional", "bunker_llm_survivor",    "bunker_llm_skeptic"};
+          "bunker_llm_emotional", "bunker_llm_survivor",    "bunker_llm_skeptic",
+          "bunker_llm_llama3.2_1b_rational", "bunker_llm_qwen2.5_1.5b_rational",
+          "bunker_llm_gpt4o_mini_rational"};
 }
 
 std::vector<std::shared_ptr<Bunker::IBunkerAgent>>
-GameManager::createBunkerAgents(const std::vector<std::string> &agent_names) {
+GameManager::createBunkerAgents(const std::vector<std::string> &agent_names, const std::string& openai_key) {
   std::vector<std::shared_ptr<Bunker::IBunkerAgent>> agents;
   for (const auto &name : agent_names) {
-    agents.push_back(std::make_shared<Bunker::BunkerAgentProxy>(name, api_url_));
+    auto agent = std::make_shared<Bunker::BunkerAgentProxy>(name, api_url_);
+    agent->setOpenAIKey(openai_key);
+    agents.push_back(agent);
   }
   return agents;
 }

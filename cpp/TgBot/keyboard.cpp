@@ -4,8 +4,11 @@
 using namespace std;
 
 string Keyboard::createMainMenu() {
-  vector<vector<string>> buttons = {
-      {"🎮 Крестики-нолики"}, {"🎭 Мафия"}, {"🛡️ Бункер"}, {"📊 Статистика"}, {"⚙️ Настройки"}};
+  vector<vector<string>> buttons = {{"🎮 Крестики-нолики"},
+                                    {"🎭 Мафия"},
+                                    {"🛡️ Бункер"},
+                                    {"📊 Статистика"},
+                                    {"⚙️ Настройки"}};
   return createReplyKeyboard(buttons);
 }
 
@@ -52,26 +55,26 @@ string Keyboard::createMafiaPlayersMenu() {
   return createReplyKeyboard(buttons);
 }
 
-string Keyboard::createMafiaAgentsMenu(const vector<string>& available, 
-                                        const vector<string>& selected) {
+string Keyboard::createMafiaAgentsMenu(const vector<string> &available,
+                                       const vector<string> &selected) {
   vector<vector<string>> buttons;
-  
-  for (const auto& agent : available) {
+
+  for (const auto &agent : available) {
     bool is_selected = false;
-    for (const auto& s : selected) {
+    for (const auto &s : selected) {
       if (s == agent) {
         is_selected = true;
         break;
       }
     }
-    
+
     string label = (is_selected ? "✅ " : "") + agent;
     buttons.push_back({label});
   }
-  
+
   buttons.push_back({"🔄 Очистить выбор"});
   buttons.push_back({"◀️ Назад"});
-  
+
   return createReplyKeyboard(buttons);
 }
 
@@ -86,12 +89,20 @@ string Keyboard::createBunkerMenu() {
 }
 
 string Keyboard::createBunkerCapacityMenu() {
-  vector<vector<string>> buttons = {{"Вместимость 3"}, {"Вместимость 4"},
-                                    {"Вместимость 5"}, {"Вместимость 6"},
+  vector<vector<string>> buttons = {{"Вместимость 3"},
+                                    {"Вместимость 4"},
+                                    {"Вместимость 5"},
+                                    {"Вместимость 6"},
                                     {"◀️ Назад"}};
   return createReplyKeyboard(buttons);
 }
 
+string Keyboard::createSettingsMenu() {
+  vector<vector<string>> buttons = {{"🔑 Установить OpenAI Key"},
+                                    {"🗑️ Сбросить ключ"},
+                                    {"◀️ Назад в главное меню"}};
+  return createReplyKeyboard(buttons);
+}
 
 // === Общие ===
 
@@ -116,6 +127,7 @@ string Keyboard::createReplyKeyboard(const vector<vector<string>> &buttons,
 
   Json::StreamWriterBuilder writer;
   writer["indentation"] = "";
+  writer["emitUTF8"] = true;
   return Json::writeString(writer, replyMarkup);
 }
 
@@ -125,5 +137,6 @@ string Keyboard::removeKeyboard() {
 
   Json::StreamWriterBuilder writer;
   writer["indentation"] = "";
+  writer["emitUTF8"] = true;
   return Json::writeString(writer, replyMarkup);
 }
