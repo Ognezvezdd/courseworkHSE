@@ -195,7 +195,7 @@ void TelegramBot::showMafiaMenu(int64_t chat_id) {
 void TelegramBot::showBunkerMenu(int64_t chat_id) {
   sendMessage(chat_id,
               "🛡️ *Бункер*\n\n"
-              "Настройте вместимость, ставку и нажмите «Запустить бункер».",
+              "Настройте вместимость и нажмите «Запустить бункер».",
               Keyboard::createBunkerMenu(), true);
 }
 
@@ -362,15 +362,8 @@ void TelegramBot::sendMafiaChatLog(
 }
 
 void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
-  if (state.bet_amount <= 0) {
-    sendMessage(chat_id, "⚠️ Сначала сделайте ставку!",
-                Keyboard::createBunkerMenu());
-    return;
-  }
-
   sendMessage(chat_id, "🛡️ Запускаю Бункер: вместимость " +
-                           to_string(state.bunker_capacity) + ", ставка " +
-                           to_string(state.bet_amount) +
+                           to_string(state.bunker_capacity) +
                            ".\nЭто может занять некоторое время.");
 
   try {
@@ -382,8 +375,8 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
     }
 
     BunkerGameResult result = game_manager_.runBunkerGame(
-        agents, state.bunker_capacity, state.bet_amount);
-    formatBunkerResult(chat_id, result, state.bet_amount);
+        agents, state.bunker_capacity);
+    formatBunkerResult(chat_id, result);
   } catch (const std::exception &e) {
     sendMessage(chat_id, "❌ Ошибка при запуске Бункера: " + string(e.what()),
                 Keyboard::createBunkerMenu());
@@ -394,17 +387,14 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
 }
 
 void TelegramBot::formatBunkerResult(int64_t chat_id,
-                                     const BunkerGameResult &result,
-                                     int bet_amount) {
+                                     const BunkerGameResult &result) {
   stringstream ss;
   ss << "🛡️ *Игра Бункер завершена!*\n\n";
   ss << "🏆 Исход: *";
   if (result.winner == "survive") {
     ss << "Выжившие прошли в бункер* ✅\n";
-    ss << "💰 Выигрыш: " << (bet_amount * 2) << " очков\n";
   } else if (result.winner == "disaster") {
     ss << "Катастрофа* 💥\n";
-    ss << "Ставка проиграна\n";
   } else {
     ss << "Ошибка*\n";
   }
@@ -604,6 +594,58 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       sendMessage(chat_id, rules, Keyboard::createMafiaMenu(), true);
       return;
     }
+    // --- Выбор агентов ---
+    if (text == "👥 Выбор агентов") {
+      string markup = Keyboard::createMafiaAgentsMenu(
+          game_manager_.getAvailableMafiaAgents(), state.mafia_agents);
+      sendMessage(chat_id, "👥 Выберите агентов для игры (текущий выбор: " +
+                               std::to_string(state.mafia_agents.size()) + ")",
+                  markup);
+      return;
+    }
+
+    if (text == "🔄 Очистить выбор") {
+      state.mafia_agents.clear();
+      string markup = Keyboard::createMafiaAgentsMenu(
+          game_manager_.getAvailableMafiaAgents(), state.mafia_agents);
+      sendMessage(chat_id, "✅ Выбор очищен", markup);
+      return;
+    }
+
+    // Обработка клика по агенту (с ✅ или без)
+    auto available_agents = game_manager_.getAvailableMafiaAgents();
+    bool agent_clicked = false;
+    string clicked_agent = "";
+
+    for (const auto &raw_agent : available_agents) {
+      if (text == raw_agent || text == ("✅ " + raw_agent)) {
+        agent_clicked = true;
+        clicked_agent = raw_agent;
+        break;
+      }
+    }
+
+    if (agent_clicked) {
+      bool found = false;
+      for (auto it = state.mafia_agents.begin(); it != state.mafia_agents.end();
+           ++it) {
+        if (*it == clicked_agent) {
+          state.mafia_agents.erase(it);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        state.mafia_agents.push_back(clicked_agent);
+      }
+
+      string markup = Keyboard::createMafiaAgentsMenu(
+          available_agents, state.mafia_agents);
+      sendMessage(chat_id, "👥 Выбранные агенты: " +
+                               std::to_string(state.mafia_agents.size()),
+                  markup);
+      return;
+    }
 
     // --- Запуск ---
     if (text == "▶️ Запустить мафию") {
@@ -650,41 +692,13 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
       return;
     }
 
-    if (text == "💰 Ставка бункер") {
-      sendMessage(chat_id, "💰 Выберите размер ставки:",
-                  Keyboard::createBunkerBetsMenu());
-      return;
-    }
-
-    bool isBunkerBet =
-        (text.rfind("Ставка бункер", 0) == 0) ||
-        (!text.empty() && std::isdigit((unsigned char)text[0]));
-
-    if (isBunkerBet) {
-      std::string digits;
-      for (unsigned char c : text)
-        if (std::isdigit(c))
-          digits += char(c);
-
-      if (!digits.empty()) {
-        state.bet_amount = std::stoi(digits);
-        sendMessage(chat_id, "✅ Ставка: " + digits + " очков",
-                    Keyboard::createBunkerMenu());
-      } else {
-        sendMessage(chat_id, "❌ Неверная ставка",
-                    Keyboard::createBunkerBetsMenu());
-      }
-      return;
-    }
-
     if (text == "📋 Правила бункера") {
       const string rules =
           "🛡️ *Правила Бункера:*\n\n"
           "• Есть ограниченная вместимость бункера\n"
           "• Каждый раунд: обсуждение и голосование за изгнание\n"
           "• Цель — оставить наиболее полезных для выживания\n"
-          "• Когда катастрофа наступает, выживают только поместившиеся\n\n"
-          "💰 Выплата x2 при исходе `survive`";
+          "• Когда катастрофа наступает, выживают только поместившиеся";
       sendMessage(chat_id, rules, Keyboard::createBunkerMenu(), true);
       return;
     }

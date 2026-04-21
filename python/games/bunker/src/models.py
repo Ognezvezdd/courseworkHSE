@@ -20,6 +20,8 @@ class PlayerState(BaseModel):
     personality: str = "CALM"
     is_alive: bool = True
     is_exiled: bool = False
+    survival_score: int = 50
+    utility_score: int = 50
 
 
 class BunkerState(BaseModel):

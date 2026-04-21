@@ -1,4 +1,5 @@
 #include "mafia_game.hpp"
+#include "mafia_agent_proxy.hpp"
 #include <algorithm>
 #include <ctime>
 #include <iomanip>
@@ -38,15 +39,25 @@ bool MafiaGame::initialize(
     std::string role_info = "Ваша роль: " + players_[i].getRoleName();
     players_[i].known_info.push_back(role_info);
 
+    // Сообщаем агенту его ID
+    auto *proxy = dynamic_cast<MafiaAgentProxy*>(agents_[i].get());
+    if (proxy) {
+      proxy->setPlayerId(players_[i].id);
+    }
+
     if (players_[i].isMafia()) {
       std::string mafia_team = "Ваша команда мафии: ";
-      for (int mafia_id : getAliveMafiaIds()) {
-        if (mafia_id != players_[i].id) {
-          int idx = findPlayerById(mafia_id);
-          if (idx != -1) {
-            mafia_team += players_[idx].name + ", ";
+      std::vector<int> mafia_ids;
+      for (const auto &p : players_) {
+        if (p.isMafia()) {
+          mafia_ids.push_back(p.id);
+          if (p.id != players_[i].id) {
+            mafia_team += p.name + ", ";
           }
         }
+      }
+      if (proxy) {
+        proxy->setMafiaTeam(mafia_ids);
       }
       if (mafia_team.length() > 20) {
         mafia_team = mafia_team.substr(0, mafia_team.length() - 2);
@@ -244,9 +255,19 @@ void MafiaGame::resolveNightActions() {
   if (kill_target != -1 && !is_protected) {
     int target_idx = findPlayerById(kill_target);
     if (target_idx != -1) {
+      std::string victim_name = players_[target_idx].name;
       killPlayer(kill_target, "убит мафией ночью");
-      broadcastMessage("Ночью мафия убила " + players_[target_idx].name + "!",
+      broadcastMessage("Ночью мафия убила " + victim_name + "!",
                        false);
+      
+      // Записываем в историю выбывших для всех агентов
+      for (auto &agent : agents_) {
+        auto *proxy = dynamic_cast<MafiaAgentProxy*>(agent.get());
+        if (proxy) {
+          proxy->addEliminatedPlayer("Ночь " + std::to_string(current_day_) + 
+                                     ": убит " + victim_name);
+        }
+      }
     }
   } else if (kill_target != -1 && is_protected) {
     broadcastMessage("Мафия пыталась убить кого-то, но доктор спас жертву!",
@@ -270,6 +291,12 @@ void MafiaGame::resolveNightActions() {
                            players_[target_idx].name + " " + result, true);
         players_[sheriff_idx].known_info.push_back(
             "Проверка: " + players_[target_idx].name + " " + result);
+        
+        // Записываем в Role Knowledge шерифа
+        auto *proxy = dynamic_cast<MafiaAgentProxy*>(agents_[sheriff_idx].get());
+        if (proxy) {
+            proxy->addKnownRole(players_[target_idx].id, is_mafia ? "MAFIA" : "CITIZEN");
+        }
       }
     }
   }
@@ -289,6 +316,12 @@ void MafiaGame::resolveNightActions() {
                            true);
         players_[don_idx].known_info.push_back(
             "Проверка: " + players_[target_idx].name + " " + result);
+            
+        // Записываем в Role Knowledge дона
+        auto *proxy = dynamic_cast<MafiaAgentProxy*>(agents_[don_idx].get());
+        if (proxy) {
+            proxy->addKnownRole(players_[target_idx].id, is_sheriff ? "SHERIFF" : "NOT_SHERIFF");
+        }
       }
     }
   }
@@ -384,6 +417,31 @@ void MafiaGame::resolveVoting() {
       broadcastMessage(players_[target_idx].name + role_reveal +
                            " изгнан по результатам голосования!",
                        false);
+    }
+  }
+
+  // Записываем историю голосования во все прокси-агенты
+  {
+    std::map<std::string, int> vote_result;
+    for (const auto &[pid, cnt] : votes_) {
+      int idx = findPlayerById(pid);
+      if (idx != -1)
+        vote_result[players_[idx].name] = cnt;
+    }
+    std::string exiled_name = "";
+    if (exile_target != -1 && !tie && max_votes > 0) {
+      int idx = findPlayerById(exile_target);
+      if (idx != -1) exiled_name = players_[idx].name;
+    }
+    for (auto &agent : agents_) {
+      auto *proxy = dynamic_cast<MafiaAgentProxy*>(agent.get());
+      if (proxy) {
+        proxy->addVotingRecord(current_day_, vote_result, exiled_name);
+        if (!exiled_name.empty()) {
+          proxy->addEliminatedPlayer("День " + std::to_string(current_day_) +
+                                     ": изгнан " + exiled_name);
+        }
+      }
     }
   }
 

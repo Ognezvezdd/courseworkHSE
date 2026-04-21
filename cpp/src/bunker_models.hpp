@@ -76,8 +76,13 @@ struct PlayerCharacter {
     bool is_alive;
     bool is_exiled;
     
+    // Новые численные параметры для LLM-бенчмарка
+    int survival_score; // 0-100: вероятность выжить самому
+    int utility_score;  // 0-100: польза для бункера
+    
     PlayerCharacter() 
-        : player_id(0), age(30), is_alive(true), is_exiled(false) {}
+        : player_id(0), age(30), is_alive(true), is_exiled(false)
+        , survival_score(50), utility_score(50) {}
     
     std::string getProfessionString() const;
     std::string getHealthString() const;

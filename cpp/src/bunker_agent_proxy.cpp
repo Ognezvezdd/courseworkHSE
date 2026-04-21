@@ -178,10 +178,12 @@ BunkerAction BunkerAgentProxy::getAction(
     for (const auto &p : players) {
       Json::Value j;
       j["player_id"] = p.player_id;
-      j["player_name"] = p.player_name;
+      j["player_name"] = "Player_" + std::to_string(p.player_id);
       j["profession"] = p.getProfessionString();
       j["age"] = p.age;
       j["health"] = p.getHealthString();
+      j["survival_score"] = p.survival_score;
+      j["utility_score"] = p.utility_score;
       Json::Value skills_json(Json::arrayValue);
       for (const auto &s : p.skills)
         skills_json.append(BunkerUtils::skillToString(s));
@@ -197,7 +199,7 @@ BunkerAction BunkerAgentProxy::getAction(
     for (const auto &m : chat_history) {
       Json::Value j;
       j["player_id"] = m.player_id;
-      j["player_name"] = m.player_name;
+      j["player_name"] = "Player_" + std::to_string(m.player_id);
       j["text"] = m.text;
       j["timestamp"] = m.timestamp;
       j["is_public"] = m.is_public;
@@ -207,11 +209,16 @@ BunkerAction BunkerAgentProxy::getAction(
 
     Json::Value my_json;
     my_json["player_id"] = my_character.player_id;
-    my_json["player_name"] = my_character.player_name;
+    my_json["player_name"] = "Player_" + std::to_string(my_character.player_id);
     my_json["profession"] = my_character.getProfessionString();
     my_json["age"] = my_character.age;
     my_json["health"] = my_character.getHealthString();
+    my_json["survival_score"] = my_character.survival_score;
+    my_json["utility_score"] = my_character.utility_score;
     request["my_character"] = my_json;
+
+    request["agent_type"] = name_;
+    request["agent_name"] = "Player_" + std::to_string(my_character.player_id);
 
     Json::Value known_json(Json::arrayValue);
     for (const auto &i : known_info)
@@ -265,10 +272,12 @@ std::string BunkerAgentProxy::getChatMessage(
     for (const auto &p : players) {
       Json::Value j;
       j["player_id"] = p.player_id;
-      j["player_name"] = p.player_name;
+      j["player_name"] = "Player_" + std::to_string(p.player_id);
       j["profession"] = p.getProfessionString();
       j["age"] = p.age;
       j["health"] = p.getHealthString();
+      j["survival_score"] = p.survival_score;
+      j["utility_score"] = p.utility_score;
       Json::Value skills_json(Json::arrayValue);
       for (const auto &s : p.skills)
         skills_json.append(BunkerUtils::skillToString(s));
@@ -284,7 +293,7 @@ std::string BunkerAgentProxy::getChatMessage(
     for (const auto &m : chat_history) {
       Json::Value j;
       j["player_id"] = m.player_id;
-      j["player_name"] = m.player_name;
+      j["player_name"] = "Player_" + std::to_string(m.player_id);
       j["text"] = m.text;
       j["timestamp"] = m.timestamp;
       j["is_public"] = m.is_public;
@@ -294,11 +303,16 @@ std::string BunkerAgentProxy::getChatMessage(
 
     Json::Value my_json;
     my_json["player_id"] = my_character.player_id;
-    my_json["player_name"] = my_character.player_name;
+    my_json["player_name"] = "Player_" + std::to_string(my_character.player_id);
     my_json["profession"] = my_character.getProfessionString();
     my_json["age"] = my_character.age;
     my_json["health"] = my_character.getHealthString();
+    my_json["survival_score"] = my_character.survival_score;
+    my_json["utility_score"] = my_character.utility_score;
     request["my_character"] = my_json;
+    
+    request["agent_type"] = name_;
+    request["agent_name"] = "Player_" + std::to_string(my_character.player_id);
 
     Json::Value known_json(Json::arrayValue);
     for (const auto &i : known_info)

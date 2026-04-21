@@ -14,10 +14,13 @@ struct UserState {
   int mafia_players;
   std::vector<std::string> mafia_agents;
 
+  // Для бункера
+  int bunker_capacity;
+
   UserState()
       : selected_game("tic_tac_toe_5x5"), selected_agent("random"),
         opponent_agent("random"), game_mode("tic_tac_toe"),
-        mafia_players(6) {}
+        mafia_players(6), bunker_capacity(4) {}
 };
 
 #endif // USER_STATE_HPP

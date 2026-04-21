@@ -1,5 +1,6 @@
 #include "game_manager.hpp"
 #include "mafia_agent_proxy.hpp"
+#include "bunker_agent_proxy.hpp"
 #include <algorithm>
 #include <iostream>
 #include <json/json.h>
@@ -50,15 +51,20 @@ std::vector<std::string> GameManager::getAvailableAgents() {
 }
 
 std::vector<std::string> GameManager::getAvailableMafiaAgents() {
-  // Для начала используем те же агенты, что и для крестиков-ноликов
-  auto agents = getAvailableAgents();
+  std::vector<std::string> agents = {"random", "heuristic"};
 
-  // Добавляем специализированных агентов для мафии
-  agents.push_back("mafia_random");
+  // 6 LLM моделей для бенчмарка
+  agents.push_back("llm_gemma3");
+  agents.push_back("llm_llama3.2_1b");
+  agents.push_back("llm_phi3_mini");
+  agents.push_back("llm_llama3.2_3b");
+  agents.push_back("llm_phi4_mini");
+  agents.push_back("llm_qwen2.5_1.5b");
+
+  // Специализированные эвристики
   agents.push_back("mafia_conservative");
   agents.push_back("mafia_aggressive");
   agents.push_back("citizen_cautious");
-  agents.push_back("citizen_social");
 
   return agents;
 }
@@ -301,4 +307,66 @@ std::vector<Mafia::ChatMessage>
 GameManager::getMafiaChatHistory(const std::string &game_id) {
   // Заглушка - в реальности это будет запрос к API
   return {};
+}
+
+BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agents,
+                                           int bunker_capacity) {
+  BunkerGameResult result;
+
+  // Если агентов не передали, берем по умолчанию
+  std::vector<std::string> selected_agents = agents;
+  if (selected_agents.empty()) {
+    selected_agents = getAvailableBunkerAgents();
+  }
+
+  // Создаем игру
+  Bunker::BunkerGame game(bunker_capacity);
+  auto bunker_agents = createBunkerAgents(selected_agents);
+
+  if (!game.initialize(bunker_agents)) {
+    result.winner = "error";
+    return result;
+  }
+
+  // Игровой цикл
+  int cycle_count = 0;
+  while (!game.isGameOver() && cycle_count < 50) {
+    if (!game.executeCycle())
+      break;
+    cycle_count++;
+  }
+
+  // Результаты
+  auto game_data = game.getResult();
+  result.winner = game_data.winner;
+  result.survivors = game_data.survivors;
+  result.exiled_players = game_data.exiled_players;
+  result.game_log = game_data.game_log;
+  result.chat_log = game_data.chat_history;
+  result.total_rounds = game_data.total_rounds;
+  result.survivors_count = game_data.survivors_count;
+
+  std::cout << "🏁 Bunker Game Finished. Winner: " << result.winner << std::endl;
+
+  return result;
+}
+
+std::vector<std::string> GameManager::getAvailableBunkerAgents() {
+  return {"bunker_llm_rational",  "bunker_llm_aggressive", "bunker_llm_cooperative",
+          "bunker_llm_emotional", "bunker_llm_survivor",    "bunker_llm_skeptic"};
+}
+
+std::vector<std::shared_ptr<Bunker::IBunkerAgent>>
+GameManager::createBunkerAgents(const std::vector<std::string> &agent_names) {
+  std::vector<std::shared_ptr<Bunker::IBunkerAgent>> agents;
+  for (const auto &name : agent_names) {
+    agents.push_back(std::make_shared<Bunker::BunkerAgentProxy>(name, api_url_));
+  }
+  return agents;
+}
+
+BunkerGameResult
+GameManager::parseBunkerResponse(const std::string &json_response) {
+  // На данный момент используется локальная реализация в runBunkerGame
+  return BunkerGameResult();
 }

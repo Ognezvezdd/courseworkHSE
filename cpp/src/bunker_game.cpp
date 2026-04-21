@@ -35,7 +35,7 @@ bool BunkerGame::initialize(const std::vector<std::shared_ptr<IBunkerAgent>>& ag
     for (size_t i = 0; i < agents_.size(); ++i) {
         if (!agents_[i]) continue;
         
-        PlayerCharacter character = generateRandomCharacter(i + 1, agents_[i]->getName());
+        PlayerCharacter character = generateRandomCharacter(i + 1, "Player_" + std::to_string(i + 1));
         players_.push_back(character);
         
         // Сообщаем агенту его характеристики
@@ -66,7 +66,7 @@ bool BunkerGame::addPlayer(std::shared_ptr<IBunkerAgent> agent) {
 
     agents_.push_back(agent);
     int player_id = static_cast<int>(agents_.size());
-    PlayerCharacter character = generateRandomCharacter(player_id, agent->getName());
+    PlayerCharacter character = generateRandomCharacter(player_id, "Player_" + std::to_string(player_id));
     players_.push_back(character);
     agent->setCharacter(character);
     agent->updateKnowledge("Ваш персонаж: " + character.getProfessionString() +
@@ -98,6 +98,10 @@ PlayerCharacter BunkerGame::generateRandomCharacter(int player_id, const std::st
     
     // Генерируем 2-3 случайных навыка
     int num_skills = (rng_() % 2) + 2; // 2 или 3
+    
+    // Новые численные параметры
+    character.survival_score = (rng_() % 61) + 20; // 20-80
+    character.utility_score = (rng_() % 61) + 20;  // 20-80
     for (int i = 0; i < num_skills; ++i) {
         character.skills.push_back(BunkerUtils::getRandomSkill());
     }

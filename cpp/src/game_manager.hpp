@@ -40,8 +40,6 @@ struct BunkerGameResult {
   std::vector<std::string> game_log;
   int total_rounds = 0;
   int survivors_count = 0;
-  int bet_amount = 0;
-  int win_amount = 0;
   std::string json_output = "";
 };
 
@@ -121,14 +119,12 @@ public:
 
   /**
    * @brief Запуск игры в Бункер
-   * @param agents Список агентов для игры (минимум 3)
+   * @param agents Список агентов
    * @param bunker_capacity Вместимость бункера (сколько может выжить)
-   * @param bet_amount Размер ставки
    * @return Результат игры в Бункер
    */
   BunkerGameResult runBunkerGame(const std::vector<std::string>& agents,
-                                 int bunker_capacity = 4,
-                                 int bet_amount = 100);
+                                 int bunker_capacity = 4);
 
   /**
    * @brief Получить список доступных агентов для Бункера
