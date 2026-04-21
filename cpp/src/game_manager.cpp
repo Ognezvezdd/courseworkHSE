@@ -313,10 +313,34 @@ BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agen
                                            int bunker_capacity, const std::string& openai_key) {
   BunkerGameResult result;
 
-  // Если агентов не передали, берем по умолчанию
+  // Определяем список агентов
   std::vector<std::string> selected_agents = agents;
   if (selected_agents.empty()) {
-    selected_agents = getAvailableBunkerAgents();
+    std::vector<std::string> pool = getAvailableBunkerAgents();
+    
+    // Если ключа OpenAI нет, убираем GPT-агентов из пула
+    if (openai_key.empty()) {
+      std::vector<std::string> filtered_pool;
+      for (const auto& a : pool) {
+        std::string name_upper = a;
+        std::transform(name_upper.begin(), name_upper.end(), name_upper.begin(), ::toupper);
+        if (name_upper.find("GPT") == std::string::npos) {
+          filtered_pool.push_back(a);
+        }
+      }
+      pool = filtered_pool;
+    }
+    selected_agents = pool;
+  }
+
+  // Перемешиваем и ограничиваем число игроков в соответствии с вместимостью
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(selected_agents.begin(), selected_agents.end(), g);
+
+  size_t limit = static_cast<size_t>(bunker_capacity + 2);
+  if (selected_agents.size() > limit) {
+    selected_agents.resize(limit);
   }
 
   // Создаем игру

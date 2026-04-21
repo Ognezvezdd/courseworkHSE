@@ -369,13 +369,7 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
                            ".\nЭто может занять некоторое время.");
 
   try {
-    auto agents = game_manager_.getAvailableBunkerAgents();
-    if (agents.empty()) {
-      sendMessage(chat_id, "❌ Список агентов для Бункера пуст.",
-                  Keyboard::createBunkerMenu());
-      return;
-    }
-
+    std::vector<std::string> agents; // Пусть GameManager сам выберет и отфильтрует агентов
     BunkerGameResult result = game_manager_.runBunkerGame(
         agents, state.bunker_capacity, state.openai_api_key);
     formatBunkerResult(chat_id, result);
