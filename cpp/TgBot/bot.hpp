@@ -3,6 +3,7 @@
 
 #include "game_manager.hpp"
 #include "user_state.hpp"
+#include <atomic>
 #include <map>
 #include <string>
 
@@ -50,6 +51,7 @@ private:
   std::string base_url_;
   GameManager &game_manager_;
   std::map<int64_t, UserState> user_states_;
+  std::atomic<bool> is_server_busy_{false};
 };
 
 #endif // BOT_HPP

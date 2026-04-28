@@ -234,11 +234,23 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
     return;
   }
 
+  if (is_server_busy_.exchange(true)) {
+    sendMessage(chat_id, "⚠️ Сервер занят другой игрой. Пожалуйста, подождите.", Keyboard::createTicTacToeMenu());
+    return;
+  }
+
   sendMessage(chat_id, "🎲 Запуск: " + state.selected_agent + " vs " +
                            state.opponent_agent + "...");
 
   GameResult result = game_manager_.runGame(
       state.selected_agent, state.opponent_agent, (int)time(nullptr));
+
+  is_server_busy_ = false;
+
+  if (result.winner == "error") {
+      sendMessage(chat_id, "❌ Ошибка симуляции. Убедитесь, что Ollama запущена (если используются LLM агенты) и Python API доступен.", Keyboard::createTicTacToeMenu());
+      return;
+  }
 
   stringstream ss;
   ss << "🏁 *Игра завершена!*\n\n";
@@ -283,6 +295,11 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
 
 void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
 
+  if (is_server_busy_.exchange(true)) {
+    sendMessage(chat_id, "⚠️ Сервер занят другой игрой. Пожалуйста, подождите.", Keyboard::createMafiaMenu());
+    return;
+  }
+
   sendMessage(chat_id, "🎭 Запускаю мафию с " + to_string(state.mafia_players) +
                            " игроками...\n"
                            "Это может занять некоторое время.");
@@ -290,6 +307,7 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
   try {
     auto agents = game_manager_.getAvailableMafiaAgents();
     if (agents.empty()) {
+      is_server_busy_ = false;
       sendMessage(chat_id, "❌ Список агентов пуст. Попробуйте позже.",
                   Keyboard::createMafiaMenu());
       return;
@@ -298,6 +316,13 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
     MafiaGameResult result =
         game_manager_.runMafiaGame(agents, state.mafia_players, true);
 
+    is_server_busy_ = false;
+
+    if (result.winner == "error") {
+        sendMessage(chat_id, "❌ Ошибка симуляции. Убедитесь, что Ollama запущена (ollama serve) и API работает.", Keyboard::createMafiaMenu());
+        return;
+    }
+
     formatMafiaResult(chat_id, result);
 
     // Запись в статистику — используем типы моделей напрямую
@@ -305,9 +330,11 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
       game_manager_.reportMafiaStats(result.winner, result.mafia_types, result.citizen_types);
     }
   } catch (const std::exception &e) {
+    is_server_busy_ = false;
     sendMessage(chat_id, "❌ Ошибка при запуске: " + string(e.what()),
                 Keyboard::createMafiaMenu());
   } catch (...) {
+    is_server_busy_ = false;
     sendMessage(chat_id, "❌ Критическая ошибка при запуске игры.",
                 Keyboard::createMafiaMenu());
   }
@@ -389,6 +416,11 @@ void TelegramBot::sendMafiaChatLog(
 }
 
 void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
+  if (is_server_busy_.exchange(true)) {
+    sendMessage(chat_id, "⚠️ Сервер занят другой игрой. Пожалуйста, подождите.", Keyboard::createBunkerMenu());
+    return;
+  }
+
   sendMessage(chat_id, "🛡️ Запускаю Бункер: вместимость " +
                            to_string(state.bunker_capacity) +
                            ".\nЭто может занять некоторое время.");
@@ -397,6 +429,14 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
     std::vector<std::string> agents; // Пусть GameManager сам выберет и отфильтрует агентов
     BunkerGameResult result = game_manager_.runBunkerGame(
         agents, state.bunker_capacity, state.openai_api_key);
+    
+    is_server_busy_ = false;
+
+    if (result.winner == "error") {
+        sendMessage(chat_id, "❌ Ошибка симуляции. Убедитесь, что Ollama запущена (ollama serve) и API работает.", Keyboard::createBunkerMenu());
+        return;
+    }
+
     formatBunkerResult(chat_id, result);
 
     // Запись в статистику бенчмарка — используем типы моделей напрямую
@@ -404,9 +444,11 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
       game_manager_.reportBunkerStats(result.survivors_types, result.exiled_types);
     }
   } catch (const std::exception &e) {
+    is_server_busy_ = false;
     sendMessage(chat_id, "❌ Ошибка при запуске Бункера: " + string(e.what()),
                 Keyboard::createBunkerMenu());
   } catch (...) {
+    is_server_busy_ = false;
     sendMessage(chat_id, "❌ Критическая ошибка при запуске Бункера.",
                 Keyboard::createBunkerMenu());
   }

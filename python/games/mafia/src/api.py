@@ -43,8 +43,6 @@ async def get_agent_action(request: AgentRequest):
     name_upper = request.agent_name.upper()
     if "LLM" in name_upper:
         agent_type = "LLM"
-    elif "RL" in name_upper or "QLEARNING" in name_upper:
-        agent_type = "RL"
 
     action = AgentFactory.get_action_for_player(
         game_state, request.role, request.agent_name, agent_type
@@ -64,8 +62,6 @@ async def get_agent_chat(request: AgentRequest):
     name_upper = request.agent_name.upper()
     if "LLM" in name_upper:
         agent_type = "LLM"
-    elif "RL" in name_upper or "QLEARNING" in name_upper:
-        agent_type = "RL"
 
     agent = AgentFactory.get_agent(agent_type, request.agent_name)
     action = agent.decide_action(game_state, request.role)

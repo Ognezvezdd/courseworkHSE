@@ -70,7 +70,7 @@
 
 ```bash
 # 1. Клонируйте репозиторий
-git clone <your-repo-url>
+git clone <repo-url>
 cd courseworkHSE
 
 # 2. Настройте Telegram токен
@@ -88,6 +88,7 @@ docker-compose up --build
 - Phi-3/4
 - Qwen 2.5
 - Подключение **ChatGPT API** (через класс `OpenAIAgent` по REST)
+```
 
 ```bash
 OLLAMA_HOST=0.0.0.0 ollama serve
@@ -179,7 +180,6 @@ make
 
 ### DevOps
 *   **Контейнеризация**: Docker, Docker Compose
-*   **CI/CD**: (В разработке)
 
 ---
 
@@ -335,11 +335,6 @@ python3 -m pytest tests/ -v
 python3 -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-### C++
-```bash
-cd cpp/build
-# Тесты в разработке
-```
 
 ---
 
@@ -392,9 +387,6 @@ AGENT_CLASSES = {
 - [x] Ролевая модель Мафии (Дон, Шериф, Доктор, Мафия, Мирный)
 - [x] **OpenAI Integration**: Возможность добавить свой API Key через настройки бота.
 - [x] **Fast Presentation Mode**: Использование легковесных моделей (Llama 3.2 1B, Phi-4 Mini) для мгновенного инференса.
-- [ ] Обучение RL-агентов для Мафии
-- [ ] CI/CD pipeline
-- [ ] Web интерфейс (в планах)
 - [ ] Поддержка других игр (Шахматы/Го)
 
 ---
