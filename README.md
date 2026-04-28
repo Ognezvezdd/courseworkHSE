@@ -98,6 +98,22 @@ OLLAMA_HOST=0.0.0.0 ollama serve
 ollama run gemma3
 ```
 
+### 🧠 Настройка локальных LLM (Ollama)
+
+Для работы бенчмарка в полном объеме (все модели) необходимо скачать следующие веса. Выполни эти команды после установки Ollama:
+
+```bash
+# Основные модели для сравнения
+ollama pull gemma3
+ollama pull llama3.2:1b
+ollama pull llama3.2:3b
+ollama pull phi3:mini
+ollama pull phi4-mini
+ollama pull qwen2.5:1.5b
+```
+
+> [!TIP]
+> Если у тебя слабый компьютер, начни с `llama3.2:1b` и `phi4-mini` — они работают мгновенно даже на старых ноутбуках.
 
 **Архитектура в Docker:**
 - `python-api` (порт 8000): FastAPI сервер с игровым движком
