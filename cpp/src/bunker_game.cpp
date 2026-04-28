@@ -36,6 +36,7 @@ bool BunkerGame::initialize(const std::vector<std::shared_ptr<IBunkerAgent>>& ag
         if (!agents_[i]) continue;
         
         PlayerCharacter character = generateRandomCharacter(i + 1, "Player_" + std::to_string(i + 1));
+        character.agent_type = agents_[i]->getName(); // Устанавливаем тип агента
         players_.push_back(character);
         
         // Сообщаем агенту его характеристики
@@ -389,10 +390,12 @@ BunkerResult BunkerGame::getResult() const {
         if (player.is_alive && !player.is_exiled) {
             result.survivors.push_back(player.player_name + " (" + 
                                       player.getProfessionString() + ")");
+            result.survivors_types.push_back(player.agent_type);
         }
         if (player.is_exiled) {
             result.exiled_players.push_back(player.player_name + " (" + 
                                            player.getProfessionString() + ")");
+            result.exiled_types.push_back(player.agent_type);
         }
     }
     

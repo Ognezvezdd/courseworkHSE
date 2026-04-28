@@ -43,6 +43,15 @@ AGENT_CLASSES = {
     "llm": LLMAgent,
 }
 
+MODEL_MAP = {
+    "gemma3": "gemma3",
+    "llama3.2_1b": "llama3.2:1b",
+    "llama3.2_3b": "llama3.2:3b",
+    "phi3_mini": "phi3:mini",
+    "phi4_mini": "phi4-mini",
+    "qwen2.5_1.5b": "qwen2.5:1.5b",
+}
+
 class GameRequest(BaseModel):
     agent_x: str
     agent_o: str
@@ -72,16 +81,23 @@ async def root():
 @app.get("/agents")
 async def get_agents():
     """Return list of available agent types."""
-    return {"agents": list(AGENT_CLASSES.keys())}
+    agents = ["random", "heuristic", "qlearning"]
+    # Добавляем LLM-модели для бенчмарка
+    for model_key in MODEL_MAP.keys():
+        agents.append(f"llm_{model_key}")
+    return {"agents": agents}
 
 def create_agent(agent_type: str, name_suffix: str = "") -> BaseAgent:
+    # Обработка специфических LLM-моделей (llm_gemma3, llm_llama3.2_1b и т.д.)
+    if agent_type.startswith("llm_"):
+        model_key = agent_type[4:]
+        model_name = MODEL_MAP.get(model_key, model_key.replace("_", ":"))
+        return LLMAgent(name=f"Agent_{name_suffix} ({agent_type})", model=model_name)
+
     if agent_type not in AGENT_CLASSES:
         raise HTTPException(status_code=400, detail=f"Unknown agent type: {agent_type}")
     
     agent_cls = AGENT_CLASSES[agent_type]
-    # Some agents might take a name argument, others might not, 
-    # but based on BaseAgent they usually do or have default.
-    # Looking at the codebase, they can take name.
     return agent_cls(name=f"Agent_{name_suffix} ({agent_type})")
 
 @app.post("/game/play", response_model=GameResult)

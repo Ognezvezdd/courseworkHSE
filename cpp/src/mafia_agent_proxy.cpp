@@ -253,6 +253,8 @@ MafiaAgentProxy::getAction(const std::vector<Player> &players,
   Json::Value request = buildRequest(players, chat_history, current_phase);
 
   Json::StreamWriterBuilder writer;
+  writer["emitUTF8"] = true;
+  writer["indentation"] = "";
   std::string json_request = Json::writeString(writer, request);
 
   std::string response = sendRequestToAPI("/mafia/agent_action", json_request);
@@ -277,6 +279,8 @@ MafiaAgentProxy::getChatMessage(const std::vector<Player> &players,
   Json::Value request = buildRequest(players, chat_history, current_phase);
 
   Json::StreamWriterBuilder writer;
+  writer["emitUTF8"] = true;
+  writer["indentation"] = "";
   std::string json_request = Json::writeString(writer, request);
 
   std::string response = sendRequestToAPI("/mafia/agent_chat", json_request);

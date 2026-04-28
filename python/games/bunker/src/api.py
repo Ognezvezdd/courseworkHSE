@@ -124,15 +124,29 @@ async def bunker_agent_chat(req: BunkerAgentRequest):
     state = build_state(req)
     if "LLM" in req.agent_type.upper() or "BUNKER" in req.agent_type.upper():
         pers, model = get_personality_and_model(req.agent_type)
-        action = BunkerLLMAgent(req.agent_name, model=model, personality=pers, openai_api_key=req.openai_api_key).decide(state)
+        agent = BunkerLLMAgent(req.agent_name, model=model, personality=pers, openai_api_key=req.openai_api_key)
+        # Используем decide() и извлекаем текстовое сообщение
+        action = agent.decide(state)
         message = (action.text_message or "").strip()
-        if message:
-            return ChatResponse(message=message[:400])
-        return ChatResponse(message="Давайте обсудим, кто из нас действительно полезен для выживания в долгосрочной перспективе.")
+        if message and len(message) > 5:
+            return ChatResponse(message=message[:500])
+        # Если модель не дала сообщение - генерируем простую реплику на основе персонажа
+        alive = [p for p in state.players if p.is_alive]
+        my_char = next((p for p in alive if p.player_id == state.my_player_id), None)
+        if my_char:
+            fallback_phrases = {
+                "rational": f"Мои показатели: выживаемость {my_char.survival_score}, полезность {my_char.utility_score}. Я нужен бункеру.",
+                "aggressive": f"Смотрите на цифры. Я — {my_char.profession}, мои навыки незаменимы. Слабых надо выгнать.",
+                "cooperative": f"Предлагаю объединить усилия. Мой навык {', '.join(my_char.skills[:1]) if my_char.skills else 'выживания'} поможет всем.",
+                "emotional": f"Я не хочу умирать. Пожалуйста, дайте мне шанс — я отдам всё ради группы.",
+                "survivor": f"Я выживу любой ценой. Профессия {my_char.profession} — это то, что нужно бункеру.",
+                "skeptic": f"Давайте честно: кто из нас реально полезен? Смотрим на факты, не слова.",
+            }
+            return ChatResponse(message=fallback_phrases.get(pers, "Нам нужно оставить самых полезных для выживания."))
 
-    # simple fallback phrases
     phase = phase_to_str(req.phase)
     if phase == "DISCUSSION":
         return ChatResponse(message="Нам нужно оставить в бункере самых полезных игроков.")
     return ChatResponse(message="")
+
 

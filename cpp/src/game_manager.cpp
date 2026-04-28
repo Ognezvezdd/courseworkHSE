@@ -104,7 +104,6 @@ MafiaGameResult
 GameManager::parseMafiaResponse(const std::string &json_response) {
   MafiaGameResult result;
   result.json_output = json_response;
-  result.json_output = json_response;
 
   Json::Value root;
   Json::CharReaderBuilder reader;
@@ -180,7 +179,6 @@ GameResult GameManager::runGame(const std::string &agent_x,
     GameResult error_result;
     error_result.winner = "error";
     error_result.steps = 0;
-    error_result.steps = 0;
     error_result.json_output = "ERROR: API request failed";
     return error_result;
   }
@@ -207,7 +205,7 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
   while (static_cast<int>(selected_agent_names.size()) < num_players) {
     std::random_device rd;
     std::mt19937 g(rd());
-    std::shuffle(pool.begin(), pool.end(), g);
+    // std::shuffle(pool.begin(), pool.end(), g);
 
     for (const auto &name : pool) {
       if (static_cast<int>(selected_agent_names.size()) < num_players) {
@@ -247,6 +245,8 @@ GameManager::runMafiaGame(const std::vector<std::string> &agents,
   result.winner = game_data.winner;
   result.mafia_team = game_data.mafia_team;
   result.citizen_team = game_data.citizen_team;
+  result.mafia_types = game_data.mafia_types;
+  result.citizen_types = game_data.citizen_types;
   result.killed_players = game_data.killed_players;
   result.chat_log = game_data.chat_log;
   result.game_log = game_data.game_log;
@@ -336,7 +336,7 @@ BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agen
   // Перемешиваем и ограничиваем число игроков в соответствии с вместимостью
   std::random_device rd;
   std::mt19937 g(rd());
-  std::shuffle(selected_agents.begin(), selected_agents.end(), g);
+  // std::shuffle(selected_agents.begin(), selected_agents.end(), g);
 
   size_t limit = static_cast<size_t>(bunker_capacity + 2);
   if (selected_agents.size() > limit) {
@@ -365,6 +365,8 @@ BunkerGameResult GameManager::runBunkerGame(const std::vector<std::string> &agen
   result.winner = game_data.winner;
   result.survivors = game_data.survivors;
   result.exiled_players = game_data.exiled_players;
+  result.survivors_types = game_data.survivors_types;
+  result.exiled_types = game_data.exiled_types;
   result.game_log = game_data.game_log;
   result.chat_log = game_data.chat_history;
   result.total_rounds = game_data.total_rounds;
@@ -397,4 +399,63 @@ BunkerGameResult
 GameManager::parseBunkerResponse(const std::string &json_response) {
   // На данный момент используется локальная реализация в runBunkerGame
   return BunkerGameResult();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Статистика (benchmark)
+// ─────────────────────────────────────────────────────────────────
+
+std::string GameManager::getStatsReport() {
+  return http_client_.get(api_url_ + "/stats/report");
+}
+
+void GameManager::reportBunkerStats(const std::vector<std::string> &survivors,
+                                    const std::vector<std::string> &exiled) {
+  Json::Value req;
+  Json::Value surv_json(Json::arrayValue);
+  for (const auto &s : survivors) surv_json.append(s);
+  req["survivors"] = surv_json;
+
+  Json::Value exiled_json(Json::arrayValue);
+  for (const auto &e : exiled) exiled_json.append(e);
+  req["exiled"] = exiled_json;
+
+  Json::StreamWriterBuilder writer;
+  writer["emitUTF8"] = true;
+  writer["indentation"] = "";
+  http_client_.post(api_url_ + "/stats/record/bunker", Json::writeString(writer, req));
+}
+
+void GameManager::reportMafiaStats(const std::string &winner,
+                                   const std::vector<std::string> &mafia_agents,
+                                   const std::vector<std::string> &citizen_agents) {
+  Json::Value req;
+  req["winner"] = winner;
+
+  Json::Value m(Json::arrayValue);
+  for (const auto &a : mafia_agents) m.append(a);
+  req["mafia_agents"] = m;
+
+  Json::Value c(Json::arrayValue);
+  for (const auto &a : citizen_agents) c.append(a);
+  req["citizen_agents"] = c;
+
+  Json::StreamWriterBuilder writer;
+  writer["emitUTF8"] = true;
+  writer["indentation"] = "";
+  http_client_.post(api_url_ + "/stats/record/mafia", Json::writeString(writer, req));
+}
+
+void GameManager::reportTicTacToeStats(const std::string &agent_x,
+                                       const std::string &agent_o,
+                                       const std::string &winner) {
+  Json::Value req;
+  req["agent_x"] = agent_x;
+  req["agent_o"] = agent_o;
+  req["winner"] = winner;
+
+  Json::StreamWriterBuilder writer;
+  writer["emitUTF8"] = true;
+  writer["indentation"] = "";
+  http_client_.post(api_url_ + "/stats/record/tictactoe", Json::writeString(writer, req));
 }

@@ -229,6 +229,8 @@ BunkerAction BunkerAgentProxy::getAction(
     }
 
     Json::StreamWriterBuilder writer;
+    writer["emitUTF8"] = true;
+    writer["indentation"] = "";
     std::string body = Json::writeString(writer, request);
     std::string response = sendRequestToAPI("/bunker/agent_action", body);
 
@@ -326,6 +328,8 @@ std::string BunkerAgentProxy::getChatMessage(
     }
 
     Json::StreamWriterBuilder writer;
+    writer["emitUTF8"] = true;
+    writer["indentation"] = "";
     std::string body = Json::writeString(writer, request);
     std::string response = sendRequestToAPI("/bunker/agent_chat", body);
 

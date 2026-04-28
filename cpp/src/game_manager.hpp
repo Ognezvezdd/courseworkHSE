@@ -23,6 +23,8 @@ struct MafiaGameResult {
   std::string winner = "error";
   std::vector<std::string> mafia_team;
   std::vector<std::string> citizen_team;
+  std::vector<std::string> mafia_types;
+  std::vector<std::string> citizen_types;
   std::vector<std::string> killed_players;
   std::vector<Mafia::ChatMessage> chat_log;
   std::vector<std::string> game_log;
@@ -36,6 +38,8 @@ struct BunkerGameResult {
   std::string winner = "error";   // "survive", "disaster", или "error"
   std::vector<std::string> survivors;
   std::vector<std::string> exiled_players;
+  std::vector<std::string> survivors_types;
+  std::vector<std::string> exiled_types;
   std::vector<Bunker::ChatMessage> chat_log;
   std::vector<std::string> game_log;
   int total_rounds = 0;
@@ -132,6 +136,16 @@ public:
    * @return Список агентов
    */
   std::vector<std::string> getAvailableBunkerAgents();
+
+  std::string getStatsReport();
+  void reportBunkerStats(const std::vector<std::string>& survivors,
+                         const std::vector<std::string>& exiled);
+  void reportMafiaStats(const std::string& winner,
+                        const std::vector<std::string>& mafia_agents,
+                        const std::vector<std::string>& citizen_agents);
+  void reportTicTacToeStats(const std::string& agent_x,
+                             const std::string& agent_o,
+                             const std::string& winner);
 
 private:
   std::string api_url_;

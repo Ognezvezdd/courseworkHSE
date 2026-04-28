@@ -47,6 +47,7 @@ struct Player {
   bool is_alive;
   bool is_protected; // Защищен доктором в эту ночь
   int votes_against; // Количество голосов против (обнуляется каждый день)
+  std::string agent_type; // Тип модели (для бенчмарка)
   std::vector<std::string> known_info; // Информация, известная игроку
 
   Player(int id, const std::string &name, Role role)
@@ -122,6 +123,8 @@ struct MafiaResult {
   std::string winner;                      // "mafia", "citizens"
   std::vector<std::string> mafia_team;     // Состав мафии
   std::vector<std::string> citizen_team;   // Состав мирных
+  std::vector<std::string> mafia_types;
+  std::vector<std::string> citizen_types;
   std::vector<std::string> killed_players; // Убитые игроки по дням
   std::vector<ChatMessage> chat_log;       // Полная история чата
   std::vector<std::string> game_log;       // Подробный лог игры

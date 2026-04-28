@@ -30,7 +30,9 @@ bool MafiaGame::initialize(
     if (!agents_[i]) {
       continue;
     }
-    players_.emplace_back(i + 1, agents_[i]->getName(), Role::CITIZEN);
+    Player p(i + 1, agents_[i]->getName(), Role::CITIZEN);
+    p.agent_type = agents_[i]->getName();
+    players_.push_back(p);
   }
 
   assignRoles();
@@ -604,9 +606,11 @@ MafiaResult MafiaGame::getResult() const {
     if (player.isMafia()) {
       result.mafia_team.push_back(player.name + " (" + player.getRoleName() +
                                   ")");
+      result.mafia_types.push_back(player.agent_type);
     } else {
       result.citizen_team.push_back(player.name + " (" + player.getRoleName() +
                                     ")");
+      result.citizen_types.push_back(player.agent_type);
     }
   }
 

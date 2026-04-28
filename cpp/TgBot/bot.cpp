@@ -87,6 +87,13 @@ void TelegramBot::sendMessage(int64_t chat_id, const string &text,
 
   if (markdown) {
     params["parse_mode"] = "Markdown";
+    // Экранируем подчеркивания, так как они ломают Markdown (в именах игроков и моделей)
+    string escaped_text;
+    for (char c : text) {
+      if (c == '_') escaped_text += "\\_";
+      else escaped_text += c;
+    }
+    params["text"] = escaped_text;
   }
 
   if (!reply_markup.empty()) {
@@ -114,7 +121,12 @@ void TelegramBot::sendPhoto(int64_t chat_id, const string &photo_url,
   params["chat_id"] = chat_id;
   params["photo"] = photo_url;
   if (!caption.empty()) {
-    params["caption"] = caption;
+    string escaped_caption;
+    for (char c : caption) {
+      if (c == '_') escaped_caption += "\\_";
+      else escaped_caption += c;
+    }
+    params["caption"] = escaped_caption;
     params["parse_mode"] = "Markdown";
   }
 
@@ -146,9 +158,14 @@ void TelegramBot::uploadPhoto(int64_t chat_id, const string &file_path,
   curl_mime_filedata(part, file_path.c_str());
 
   if (!caption.empty()) {
+    string escaped_caption;
+    for (char c : caption) {
+      if (c == '_') escaped_caption += "\\_";
+      else escaped_caption += c;
+    }
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "caption");
-    curl_mime_data(part, caption.c_str(), CURL_ZERO_TERMINATED);
+    curl_mime_data(part, escaped_caption.c_str(), CURL_ZERO_TERMINATED);
 
     part = curl_mime_addpart(mime);
     curl_mime_name(part, "parse_mode");
@@ -255,6 +272,9 @@ void TelegramBot::handleTicTacToeGame(int64_t chat_id, UserState &state) {
   } else {
     sendMessage(chat_id, ss.str(), Keyboard::createTicTacToeMenu(), true);
   }
+
+  // Запись в статистику бенчмарка
+  game_manager_.reportTicTacToeStats(state.selected_agent, state.opponent_agent, result.winner);
 }
 
 // ============================================================
@@ -279,6 +299,11 @@ void TelegramBot::handleMafiaGame(int64_t chat_id, UserState &state) {
         game_manager_.runMafiaGame(agents, state.mafia_players, true);
 
     formatMafiaResult(chat_id, result);
+
+    // Запись в статистику — используем типы моделей напрямую
+    if (result.winner == "citizens" || result.winner == "mafia") {
+      game_manager_.reportMafiaStats(result.winner, result.mafia_types, result.citizen_types);
+    }
   } catch (const std::exception &e) {
     sendMessage(chat_id, "❌ Ошибка при запуске: " + string(e.what()),
                 Keyboard::createMafiaMenu());
@@ -373,6 +398,11 @@ void TelegramBot::handleBunkerGame(int64_t chat_id, UserState &state) {
     BunkerGameResult result = game_manager_.runBunkerGame(
         agents, state.bunker_capacity, state.openai_api_key);
     formatBunkerResult(chat_id, result);
+
+    // Запись в статистику бенчмарка — используем типы моделей напрямую
+    if (result.winner != "error") {
+      game_manager_.reportBunkerStats(result.survivors_types, result.exiled_types);
+    }
   } catch (const std::exception &e) {
     sendMessage(chat_id, "❌ Ошибка при запуске Бункера: " + string(e.what()),
                 Keyboard::createBunkerMenu());
@@ -474,8 +504,77 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
 
   // ── Заглушки ───────────────────────────────────────────────
   if (text == "📊 Статистика") {
-    sendMessage(chat_id, "📊 Статистика — в разработке.",
-                Keyboard::createMainMenu());
+    string raw_report = game_manager_.getStatsReport();
+    if (raw_report.empty() || raw_report.find("error") != string::npos) {
+      sendMessage(chat_id, "📊 Статистика пока пуста. Сыграйте несколько игр!",
+                  Keyboard::createMainMenu());
+      return;
+    }
+
+    // Парсим JSON
+    Json::Value root;
+    Json::CharReaderBuilder reader;
+    string errors;
+    istringstream iss(raw_report);
+    if (!Json::parseFromStream(reader, iss, &root, &errors)) {
+      sendMessage(chat_id, "📊 Не удалось загрузить статистику.",
+                  Keyboard::createMainMenu());
+      return;
+    }
+
+    stringstream ss;
+    ss << "📊 *Бенчмарк — Рейтинг моделей*\n\n";
+
+    // Bunker
+    if (root.isMember("bunker") && !root["bunker"].empty()) {
+      ss << "🛡️ *Бункер — Выживаемость:*\n";
+      int rank = 1;
+      for (const auto &entry : root["bunker"]) {
+        string name = entry.get("agent", "?").asString();
+        // Сокращаем длинные имена
+        if (name.length() > 22) name = name.substr(0, 22) + "…";
+        int games = entry.get("games", 0).asInt();
+        double rate = entry.get("survival_rate", 0).asDouble();
+        ss << rank++ << ". " << name
+           << " — " << rate << "% (" << games << " игр)\n";
+        if (rank > 8) { ss << "  ...\n"; break; }
+      }
+      ss << "\n";
+    }
+
+    // Mafia
+    if (root.isMember("mafia") && !root["mafia"].empty()) {
+      ss << "🎭 *Мафия — Win rate:*\n";
+      int rank = 1;
+      for (const auto &entry : root["mafia"]) {
+        string name = entry.get("agent", "?").asString();
+        if (name.length() > 22) name = name.substr(0, 22) + "…";
+        int games = entry.get("games", 0).asInt();
+        double rate = entry.get("win_rate", 0).asDouble();
+        int wm = entry.get("wins_as_mafia", 0).asInt();
+        int wc = entry.get("wins_as_citizen", 0).asInt();
+        ss << rank++ << ". " << name
+           << " — " << rate << "% (" << games << " игр, м:" << wm << " г:" << wc << ")\n";
+        if (rank > 8) { ss << "  ...\n"; break; }
+      }
+      ss << "\n";
+    }
+
+    // TicTacToe
+    if (root.isMember("tictactoe") && !root["tictactoe"].empty()) {
+      ss << "🎮 *Крестики-нолики — Win rate:*\n";
+      int rank = 1;
+      for (const auto &entry : root["tictactoe"]) {
+        string name = entry.get("agent", "?").asString();
+        if (name.length() > 22) name = name.substr(0, 22) + "…";
+        int games = entry.get("games", 0).asInt();
+        double rate = entry.get("win_rate", 0).asDouble();
+        ss << rank++ << ". " << name << " — " << rate << "% (" << games << " игр)\n";
+        if (rank > 6) { ss << "  ...\n"; break; }
+      }
+    }
+
+    sendMessage(chat_id, ss.str(), Keyboard::createMainMenu(), true);
     return;
   }
   if (state.is_waiting_for_api_key) {

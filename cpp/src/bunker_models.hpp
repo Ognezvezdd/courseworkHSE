@@ -79,6 +79,7 @@ struct PlayerCharacter {
     // Новые численные параметры для LLM-бенчмарка
     int survival_score; // 0-100: вероятность выжить самому
     int utility_score;  // 0-100: польза для бункера
+    std::string agent_type; // Тип модели (для бенчмарка)
     
     PlayerCharacter() 
         : player_id(0), age(30), is_alive(true), is_exiled(false)
@@ -128,6 +129,8 @@ struct BunkerResult {
     std::string winner;  // "survive", "disaster", или "error"
     std::vector<std::string> survivors;
     std::vector<std::string> exiled_players;
+    std::vector<std::string> survivors_types;
+    std::vector<std::string> exiled_types;
     std::vector<std::string> game_log;
     std::vector<ChatMessage> chat_history;
     int total_rounds;
