@@ -49,6 +49,17 @@ def _save(data: dict):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def _is_valid_agent_name(name: str) -> bool:
+    """Проверяет, является ли имя типом модели, а не техническим именем места (Player_1)."""
+    if not name or not isinstance(name, str):
+        return False
+    name_lower = name.lower()
+    # Игнорируем технические имена игроков
+    if name_lower.startswith("player_") or name_lower.startswith("agent_"):
+        return False
+    return True
+
+
 # ─────────────────────────────────────────────────────────────────
 # Bunker
 # ─────────────────────────────────────────────────────────────────
@@ -63,11 +74,13 @@ def record_bunker(survivors: List[str], exiled: List[str]):
         b = data.setdefault("bunker", {})
 
         for name in survivors:
+            if not _is_valid_agent_name(name): continue
             entry = b.setdefault(name, {"games": 0, "survived": 0, "exiled": 0})
             entry["games"] += 1
             entry["survived"] += 1
 
         for name in exiled:
+            if not _is_valid_agent_name(name): continue
             entry = b.setdefault(name, {"games": 0, "survived": 0, "exiled": 0})
             entry["games"] += 1
             entry["exiled"] += 1
@@ -92,6 +105,7 @@ def record_mafia(winner: str, mafia_agents: List[str], citizen_agents: List[str]
         mafia_won = (winner == "mafia")
 
         for name in mafia_agents:
+            if not _is_valid_agent_name(name): continue
             entry = m.setdefault(name, {
                 "games": 0,
                 "wins_as_mafia": 0, "losses_as_mafia": 0,
@@ -104,6 +118,7 @@ def record_mafia(winner: str, mafia_agents: List[str], citizen_agents: List[str]
                 entry["losses_as_mafia"] += 1
 
         for name in citizen_agents:
+            if not _is_valid_agent_name(name): continue
             entry = m.setdefault(name, {
                 "games": 0,
                 "wins_as_mafia": 0, "losses_as_mafia": 0,
