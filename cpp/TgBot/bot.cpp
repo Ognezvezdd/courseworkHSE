@@ -895,7 +895,7 @@ void TelegramBot::handleMessage(int64_t chat_id, const string &text,
 
 void TelegramBot::run() {
   cout << "🚀 Запуск бота..." << endl;
-  cout << "🔧 Используется токен: " << token_.substr(0, 10) << "..." << endl;
+  cout << "🔧 Telegram token загружен из конфигурации" << endl;
 
   int64_t last_update_id = 0;
 

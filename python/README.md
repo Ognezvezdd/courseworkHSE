@@ -1,15 +1,17 @@
-# Python AI Platform Core
+# Python AI Platform Service
 
-This directory contains the core simulation engines and AI agents for the project.
+This directory contains the FastAPI service, Tic-Tac-Toe engine, Python agent logic, prompts, visualization helpers, and benchmark stats storage.
 
 ## Structure
 
-- **`games/`**: Implementation of specific games.
-  - **`tictactoe/`**: Tic-Tac-Toe 5x5 implementation.
-  - **`mafia/`**: Mafia game logic and AI agents.
-- **`agents/`**: LLM-агенты (Gemma 3) и базовые классы.
+- **`games/`**: Game-specific Python modules.
+  - **`tictactoe/`**: Tic-Tac-Toe 5x5 engine, agents, API, and tests.
+  - **`mafia/`**: Agent decision API, models, strategies, and tests for the C++ Mafia engine.
+  - **`bunker/`**: Agent decision API, models, prompts, logging, and tests for the C++ Bunker engine.
+- **`games/common/`**: Shared LLM client and JSON stats manager.
+- **`prompts/`**: Prompt templates for LLM agents.
 - **`visualization/`**: Shared tools for game state visualization.
-- **`main_service.py`**: The entry point for the FastAPI server that combines all games.
+- **`main_service.py`**: The FastAPI entry point that combines all routers.
 
 ## Local Development
 
@@ -17,7 +19,7 @@ This directory contains the core simulation engines and AI agents for the projec
 
 ```bash
 cd python
-pip install -r requirements.txt
+python3 -m pip install -r common/requirements.txt
 python3 main_service.py
 ```
 
@@ -30,7 +32,7 @@ OLLAMA_HOST=0.0.0.0 ollama serve
 
 Or using uvicorn:
 ```bash
-uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
+python3 -m uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000/docs`.
@@ -38,17 +40,20 @@ The API will be available at `http://localhost:8000/docs`.
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest tests/
-
-# Run llm tests
-pytest games/mafia/src/tests/test_llm_agent.py
+# Run Tic-Tac-Toe tests
+python3 -m pytest games/tictactoe/src/tests -v
 
 # Run mafia tests
-pytest games/mafia/src/tests/
+python3 -m pytest games/mafia/src/tests -v
 
-# Run tictactoe tests
-pytest games/tictactoe/src/tests/
+# Run bunker tests
+python3 -m pytest games/bunker/src/tests -v
+```
+
+Current note: the complete test collection still needs cleanup. Some tests depend on package import context, and `llm/tests/test_ollama_basic.py` calls Ollama during import, so run it only when Ollama is available.
+
+```bash
+python3 -m pytest llm/tests/test_ollama_basic.py -v
 ```
 
 ## Games Documentation

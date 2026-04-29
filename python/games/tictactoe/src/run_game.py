@@ -1,18 +1,12 @@
-"""
-Скрипт для запуска игры между AI-агентами.
-Специально для интеграции с C++ ботом.
-"""
+"""Legacy CLI wrapper for Tic-Tac-Toe game execution."""
 
-import sys
 import json
 import argparse
 
-sys.path.append('.')
-
-from agents.heuristic_agent import HeuristicAgent
-from agents.qlearning_agent import QLearningAgent
-from agents.random_agent import RandomAgent
-from game.engine import run_game
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
+from games.tictactoe.src.game.engine import run_game
 
 AGENT_CLASSES = {
     "random": RandomAgent,

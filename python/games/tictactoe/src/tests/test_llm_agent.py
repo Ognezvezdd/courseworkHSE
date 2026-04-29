@@ -1,5 +1,5 @@
 import pytest
-from agents.llm_gemma3_agent import LLMAgent
+from games.tictactoe.src.agents.llm_gemma3_agent import LLMAgent
 
 def test_llm_build_prompt():
     agent = LLMAgent(name="TestLLM")
@@ -49,4 +49,3 @@ def test_llm_parse_action(monkeypatch):
     valid_moves = agent._get_valid_moves(board)
     assert action2 in valid_moves
     assert action2 == (0, 0) # Fallbacks to first valid move
-

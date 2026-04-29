@@ -1,4 +1,4 @@
 {
-    "bot_token": "8136569118:AAGkZK4wYGQULMDBB0q0S1t56HefH2Mjxj8",
+    "bot_token": "YOUR_BOT_TOKEN_HERE",
     "api_url": "http://localhost:8000"
 }

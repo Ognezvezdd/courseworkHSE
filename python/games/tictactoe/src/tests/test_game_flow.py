@@ -1,12 +1,8 @@
-"""
-Тесты хода игры и правил.
-"""
-
-from agents.heuristic_agent import HeuristicAgent
-from agents.random_agent import RandomAgent
-from game.board import Board
-from game.engine import run_game
-from game.rules import Rules
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
+from games.tictactoe.src.game.board import Board
+from games.tictactoe.src.game.engine import run_game
+from games.tictactoe.src.game.rules import Rules
 
 
 class TestRulesWinDetection:

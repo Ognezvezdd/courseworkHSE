@@ -66,8 +66,8 @@ clean: ## Очистить все (контейнеры, образы, volumes)
 	docker-compose rm -f
 	@echo "$(GREEN)✅ Cleaned$(RESET)"
 
-test-python: ## Запустить Python тесты
-	cd python && python3 -m pytest tests/ -v
+test-python: ## Запустить Python тесты игр
+	cd python && python3 -m pytest games/tictactoe/src/tests games/mafia/src/tests games/bunker/src/tests -v
 
 test-api: ## Тестировать API endpoints
 	@echo "Testing API endpoints..."
@@ -75,7 +75,7 @@ test-api: ## Тестировать API endpoints
 	@curl -s http://localhost:8000/agents | jq . || echo ""
 
 dev-api: ## Запустить Python API локально (для разработки)
-	cd python && uvicorn api:app --reload --host 0.0.0.0 --port 8000
+	cd python && python3 -m uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
 
 dev-bot: ## Собрать C++ бота локально
 	@if [ ! -d cpp/build ]; then mkdir cpp/build; fi

@@ -1,9 +1,4 @@
 from fastapi.testclient import TestClient
-import sys
-import os
-
-# Add the project root to sys.path to ensure we can import 'api' and other modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from games.tictactoe.src.api import app
 

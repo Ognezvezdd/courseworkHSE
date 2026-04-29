@@ -1,13 +1,8 @@
-"""
-Тесты AI-агентов.
-"""
-
 import pytest
-
-from agents.base_agent import BaseAgent
-from agents.heuristic_agent import HeuristicAgent
-from agents.qlearning_agent import QLearningAgent
-from agents.random_agent import RandomAgent
+from games.tictactoe.src.agents.base_agent import BaseAgent
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
 
 
 class TestAgentInterface:

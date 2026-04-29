@@ -10,11 +10,11 @@
 import argparse
 import json
 
-from agents.heuristic_agent import HeuristicAgent
-from agents.qlearning_agent import QLearningAgent
-from agents.random_agent import RandomAgent
-from agents.llm_gemma3_agent import LLMAgent
-from game.engine import run_game, format_slides
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
+from games.tictactoe.src.agents.llm_gemma3_agent import LLMAgent
+from games.tictactoe.src.game.engine import run_game, format_slides
 
 AGENT_CLASSES = {
     "random": RandomAgent,

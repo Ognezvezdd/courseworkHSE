@@ -42,9 +42,9 @@ C++ Telegram Bot  ──HTTP──▶  Python FastAPI  ──▶  AI Agents (Ran
 OLLAMA_HOST=0.0.0.0 ollama serve
 ```
 
-Запуск теста LLM-агента:
+Запуск теста LLM-агента из корня `python/`:
 ```bash
-pytest python/games/tictactoe/src/tests/test_llm_agent.py
+python3 -m pytest games/tictactoe/src/tests/test_llm_agent.py -v
 ```
 
 ---
@@ -76,9 +76,10 @@ pytest python/games/tictactoe/src/tests/test_llm_agent.py
 ## Тестирование
 
 ```bash
-# Все тесты
-python3 -m pytest tests/ -v
+# Все Tic-Tac-Toe тесты из корня python/
+cd python
+python3 -m pytest games/tictactoe/src/tests -v
 
 # Тест LLM
-python3 -m pytest tests/test_llm_agent.py -v
+python3 -m pytest games/tictactoe/src/tests/test_llm_agent.py -v
 ```

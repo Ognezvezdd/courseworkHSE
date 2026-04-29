@@ -3,108 +3,164 @@
 **Платформа симуляции конкурентного взаимодействия AI-агентов**  
 *(Competitive Multi-Agent Simulation Platform)*
 
-### Авторы: 
+### Авторы
+
 * Капогузов М. Е.
 * Дудкина А. Э.
 
 ---
 
-Это модульная платформа для разработки, тестирования и соревнований искусственных интеллектов (бенчмарк для LLM) в настольных играх (Крестики-нолики 5x5, Мафия и Бункер). Основной фокус проекта — **симуляция конкурентного взаимодействия нескольких языковых моделей**.
+## О проекте
 
-Система состоит из двух функциональных блоков:
-1.  **Backend (Python)**: Ядро симуляции, реализация агентов (Random, Heuristic, RL, **Local & Cloud LLMs**) и REST API.
-2.  **Client (C++)**: Telegram-бот интерфейс для управления симуляциями, настройки бенчмарка и наблюдения за матчами.
+Проект моделирует соревнование AI-агентов в настольных играх: **Крестики-нолики 5x5**, **Мафия** и **Бункер**. Основной фокус — сравнение поведения разных типов агентов, включая эвристические стратегии, Q-Learning и LLM-агентов через Ollama/OpenAI.
+
+Текущая архитектура состоит из двух частей:
+
+1. **Python FastAPI service** — REST API, игровой движок для Tic-Tac-Toe, агенты, LLM-прокси, промпты, статистика и визуализация Tic-Tac-Toe.
+2. **C++ Telegram bot** — пользовательский интерфейс в Telegram, управление играми, состояние пользователей, а также текущие игровые движки Mafia и Bunker. Для решений LLM-агентов C++ обращается в Python API.
+
+Важно: в текущей версии Mafia и Bunker симулируются в C++-части, а Python API используется для получения действий и реплик агентов.
 
 ---
 
-### 🛡️ Конкурентное взаимодействие: Что мы исследуем?
+## Архитектура
 
-Согласно гипотезе, взаимодействие нескольких разноплановых моделей (Multi-Agent Interaction) позволяет достичь более высокого качества "социального поведения" ИИ, чем использование одной модели. В проекте конкуренция проявляется в:
-1. **Крестики-нолики**: Чистая игровая стратегия (Zero-sum).
-2. **Мафия**: Социальная дедукция, блеф и работа в условиях асимметрии информации.
-3. **Бункер**: Переговоры, оценка полезности других и борьба за ограниченный ресурс (место в бункере).
-
-**Метрики оценки:**
-- **Survival Rate**: Как часто конкретная модель/личность выживает.
-- **Persuasiveness**: Способность агента склонить группу к своему решению (видна в протоколах).
-- **Group Utility**: Суммарная полезность команды выживших.
-
-### Архитектура взаимодействия
-
-```
-┌─────────────────┐      HTTP API       ┌──────────────────┐
-│   C++ Telegram  │ ◀──────────────────▶ │   Python FastAPI │
-│      Bot        │  (JSON requests)     │   Game Engine    │
-└─────────────────┘                      └──────────────────┘
-        │                                         │
-        │                                         │
-        ▼                                         ▼
-  Telegram Users                          AI Agents (Random,
- (Управление и                           Heuristic, Q-Learning,
-  наблюдение)                            **Local & Cloud LLMs**)
+```text
+Telegram User
+     |
+     v
+C++ Telegram Bot
+     |
+     | HTTP/JSON
+     v
+Python FastAPI
+     |
+     +-- Tic-Tac-Toe engine and agents
+     +-- Mafia/Bunker agent decision endpoints
+     +-- Stats endpoints
+     +-- Ollama/OpenAI calls for LLM agents
 ```
 
-**Преимущества микросервисной архитектуры:**
-- ✅ **Изоляция компонентов**: Python и C++ работают независимо
-- ✅ **Масштабируемость**: Легко добавлять новые боты или API инстансы
-- ✅ **Простота развертывания**: Docker Compose для одной команды запуска
-- ✅ **Тестируемость**: Каждый сервис можно тестировать отдельно
+### Основные сценарии
+
+- Tic-Tac-Toe запускается через `POST /game/play` в Python API.
+- Mafia запускается в C++ (`cpp/src/mafia_game.*`), а действия агентов запрашиваются через `/mafia/agent_action` и `/mafia/agent_chat`.
+- Bunker запускается в C++ (`cpp/src/bunker_game.*`), а действия агентов запрашиваются через `/bunker/agent_action` и `/bunker/agent_chat`.
+- Статистика записывается через `/stats/record/*` и читается через `/stats/report`.
 
 ---
 
 ## Структура репозитория
 
-| Директория | Описание | Документация |
-|------------|----------|--------------|
-| **`python/`** | Игровое ядро, агенты, API, тесты | [📖 Python README](./python/README.md) |
-| **`cpp/`** | Telegram-бот, логика ставок | [📖 C++ README](./cpp/README.md) |
-| **`docker-compose.yml`** | Оркестрация сервисов | - |
+| Путь | Назначение |
+| --- | --- |
+| `python/main_service.py` | Основная точка входа FastAPI |
+| `python/common/requirements.txt` | Python-зависимости |
+| `python/games/tictactoe/` | Tic-Tac-Toe 5x5: движок, агенты, API, тесты |
+| `python/games/mafia/` | Python-агенты и API для Mafia |
+| `python/games/bunker/` | Python-агенты и API для Bunker |
+| `python/prompts/` | Промпты для LLM-агентов |
+| `python/games/common/stats_manager.py` | JSON-статистика бенчмарка |
+| `cpp/TgBot/` | Telegram-интерфейс |
+| `cpp/src/` | C++ игровые движки, HTTP-клиент, менеджер игр |
+| `docker-compose.yml` | Запуск Python API и Telegram-бота |
+| `Makefile`, `deploy.sh` | Удобные команды запуска |
 
 ---
 
-## Быстрый запуск
+## Быстрый запуск через Docker Compose
 
-### Вариант 1: Docker Compose (Рекомендуется)
-
-Самый простой способ запустить всю систему:
+1. Создайте локальный конфиг бота:
 
 ```bash
-# 1. Клонируйте репозиторий
-git clone <repo-url>
-cd courseworkHSE
-
-# 2. Настройте Telegram токен
-# Скопируйте пример конфига и вставьте свой токен от @BotFather
 cp cpp/config.json.example cpp/config.json
-# Отредактируйте cpp/config.json, заменив YOUR_BOT_TOKEN_HERE на реальный токен
-
-# 3. Запустите все сервисы
-docker-compose up --build
-
-### Важное замечание по LLM-бенчмарку
-Для работы локальных LLM-агентов необходимо, чтобы на хост-машине был запущен сервис для инференса, например **Ollama**. Архитектура позволяет нативно взаимодействовать с:
-- Llama 3.2 (1B/3B)
-- Gemma 3
-- Phi-3/4
-- Qwen 2.5
-- Подключение **ChatGPT API** (через класс `OpenAIAgent` по REST)
 ```
+
+2. Вставьте токен Telegram-бота от `@BotFather` в `cpp/config.json`.
+
+Пример для Docker:
+
+```json
+{
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "api_url": "http://python-api:8000"
+}
+```
+
+3. Запустите платформу:
+
+```bash
+docker-compose up --build
+```
+
+Swagger UI будет доступен на `http://localhost:8000/docs`.
+
+Также можно использовать:
+
+```bash
+make up
+# или
+./deploy.sh start
+```
+
+---
+
+## Локальный запуск для разработки
+
+### Python API
+
+```bash
+cd python
+python3 -m pip install -r common/requirements.txt
+python3 main_service.py
+```
+
+Альтернативно:
+
+```bash
+cd python
+python3 -m uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
+```
+
+### C++ Telegram Bot
+
+```bash
+cd cpp
+mkdir -p build
+cd build
+cmake ..
+make
+./tg_bot
+```
+
+Для локального запуска в `cpp/config.json` укажите:
+
+```json
+{
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "api_url": "http://localhost:8000"
+}
+```
+
+---
+
+## LLM-зависимости
+
+Для локальных LLM-агентов нужен запущенный Ollama:
 
 ```bash
 OLLAMA_HOST=0.0.0.0 ollama serve
 ```
 
-И скачана модель:
+Минимальная модель для проверки:
+
 ```bash
-ollama run gemma3
+ollama pull gemma3
 ```
 
-### 🧠 Настройка локальных LLM (Ollama)
-
-Для работы бенчмарка в полном объеме (все модели) необходимо скачать следующие веса. Выполни эти команды после установки Ollama:
+Модели, которые используются в меню/бенчмарке:
 
 ```bash
-# Основные модели для сравнения
 ollama pull gemma3
 ollama pull llama3.2:1b
 ollama pull llama3.2:3b
@@ -113,100 +169,21 @@ ollama pull phi4-mini
 ollama pull qwen2.5:1.5b
 ```
 
-**Архитектура в Docker:**
-- `python-api` (порт 8000): FastAPI сервер с игровым движком
-- `telegram-bot`: C++ бот, взаимодействующий с API
-- Автоматическая настройка сети между контейнерами
-- Health checks для проверки доступности API
-
-### Вариант 2: Локальный запуск (для разработки)
-
-#### 1. Python API
-
-```bash
-cd python
-pip install -r requirements.txt
-
-# Запуск API сервера
-python3 main_service.py
-# Или через uvicorn
-uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
-
-# Swagger UI доступен на http://localhost:8000/docs
-```
-
-#### 2. C++ Telegram Bot
-
-```bash
-cd cpp
-
-# Установка зависимостей (macOS)
-brew install cmake jsoncpp libcurl
-
-# Установка зависимостей (Ubuntu)
-sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev build-essential
-
-# Сборка
-mkdir build && cd build
-cmake ..
-make
-
-# Настройка config.json
-# Убедитесь что api_url указывает на http://localhost:8000 (или другой адрес вашего API)
-
-# Запуск
-./tg_bot
-```
+OpenAI-модели используются только если пользователь добавил API key через настройки Telegram-бота или если задан `OPENAI_API_KEY`.
 
 ---
 
-## Технологический стек
+## API
 
-### Backend (Python)
-*   **Язык**: Python 3.11
-*   **Веб-фреймворк**: FastAPI
-*   **ASGI сервер**: Uvicorn
-*   **Вычисления**: NumPy
-*   **Визуализация**: Matplotlib
-*   **Тестирование**: Pytest
-*   **AI**: Q-Learning (Reinforcement Learning), Heuristic Algorithms, **LLM (Local Models via Ollama, ChatGPT API support)**
+### Общие endpoints
 
-### Client (C++)
-*   **Язык**: C++17
-*   **Сборка**: CMake
-*   **HTTP клиент**: libcurl
-*   **JSON парсинг**: JsonCpp
-*   **Telegram Bot API**: Прямая интеграция через HTTPS
+- `GET /` — health check.
+- `GET /agents` — агенты для Tic-Tac-Toe.
+- `POST /game/play` — запуск Tic-Tac-Toe.
+- `POST /train` — обучение Q-Learning агента для Tic-Tac-Toe.
 
-### DevOps
-*   **Контейнеризация**: Docker, Docker Compose
+Пример `POST /game/play`:
 
----
-
-## API Endpoints
-
-Python FastAPI предоставляет следующие эндпоинты:
-
-### `GET /`
-Проверка работоспособности API
-```json
-{
-  "message": "AI Agents Platform API is running"
-}
-```
-
-### `GET /agents`
-Получить список доступных агентов
-```json
-{
-  "agents": ["random", "heuristic", "qlearning", "llm"]
-}
-```
-
-### `POST /game/play`
-Запустить игру между двумя агентами
-
-**Request:**
 ```json
 {
   "agent_x": "heuristic",
@@ -215,244 +192,105 @@ Python FastAPI предоставляет следующие эндпоинты:
 }
 ```
 
-**Response:**
-```json
-{
-  "winner": "X",
-  "steps": 15,
-  "slides": [...]  // Полная история игры
-}
-```
+### Mafia
 
-### `POST /train`
-Обучить Q-Learning агента (для Крестиков-ноликов)
+- `POST /mafia/agent_action` — действие агента.
+- `POST /mafia/agent_chat` — реплика агента для обсуждения.
 
-**Request:**
-```json
-{
-  "agent_type": "qlearning",
-  "episodes": 1000,
-  "seed": 42,
-  "opponent_type": "random"
-}
-```
+### Bunker
 
-**Response:**
-```json
-{
-  "success": true,
-  "stats": {
-    "wins": 750,
-    "losses": 200,
-    "draws": 50
-  }
-}
-```
+- `POST /bunker/agent_action` — действие агента.
+- `POST /bunker/agent_chat` — реплика агента для обсуждения.
 
-### Mafia API Endpoints
+### Stats
 
-Мафия использует следующие эндпоинты для взаимодействия с C++ движком:
-
-*   `POST /mafia/agent_action`: Запрос действия от агента (убийство, проверка, лечение и т.д.)
-*   `POST /mafia/agent_chat`: Запрос текстового сообщения для обсуждения в чате.
-*   `GET /agents`: Возвращает список доступных агентов, включая `mafia_random`, `mafia_aggressive`, `citizen_social` и другие.
-
-Подробное описание моделей данных Мафии можно найти в [API документации Python](./python/games/mafia/src/README.md).
-
----
-
-## Конфигурация
-
-### C++ Bot (`cpp/config.json`)
-
-```json
-{
-  "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
-  "api_url": "http://python-api:8000"  // Для Docker
-  // "api_url": "http://localhost:8000"  // Для локального запуска
-}
-```
-
-**Как получить токен:**
-1. Найдите `@BotFather` в Telegram
-2. Отправьте `/newbot`
-3. Следуйте инструкциям
-4. Скопируйте полученный токен в `config.json`
-
----
-
-## Docker Compose конфигурация
-
-### Порты
-- **8000**: Python API (внешний доступ для отладки)
-
-### Volumes
-- `./python/output`: Визуализации игр
-- `./python/agents`: Сохраненные модели Q-Learning
-- `./cpp/config.json`: Конфигурация бота
-
-### Сети
-- `ai-platform`: Внутренняя сеть для взаимодействия контейнеров
-
-### Health Checks
-Python API проверяется каждые 30 секунд. Telegram бот ждет готовности API перед запуском.
-
----
-
-## Команды Docker
-
-```bash
-# Запуск в фоне
-docker-compose up -d
-
-# Просмотр логов
-docker-compose logs -f
-
-# Просмотр логов конкретного сервиса
-docker-compose logs -f python-api
-docker-compose logs -f telegram-bot
-
-# Остановка
-docker-compose down
-
-# Пересборка
-docker-compose up --build
-
-# Удаление volumes (очистка данных)
-docker-compose down -v
-```
+- `POST /stats/record/tictactoe`
+- `POST /stats/record/mafia`
+- `POST /stats/record/bunker`
+- `GET /stats/report`
 
 ---
 
 ## Тестирование
 
-### Python
+Тесты расположены внутри пакетов игр:
+
 ```bash
 cd python
-python3 -m pytest tests/ -v
-
-# С покрытием
-python3 -m pytest tests/ --cov=. --cov-report=term-missing
+python3 -m pytest games/tictactoe/src/tests -v
+python3 -m pytest games/mafia/src/tests -v
+python3 -m pytest games/bunker/src/tests -v
 ```
 
+Текущее состояние тестов: часть набора требует донастройки импортов и доступного Ollama. `llm/tests/test_ollama_basic.py` выполняет реальный вызов Ollama при импорте, поэтому его стоит запускать только при поднятом Ollama.
 
 ---
 
-## Разработка и расширение
+## Конфигурация и секреты
 
-### Добавление нового агента
-
-1. **Python часть** (`python/agents/my_agent.py`):
-```python
-from agents.base_agent import BaseAgent
-
-class MyAgent(BaseAgent):
-    def select_action(self, board, player_symbol):
-        # Ваша логика
-        return (row, col)
-```
-
-2. **Регистрация в API** (`python/api.py`):
-```python
-AGENT_CLASSES = {
-    "random": RandomAgent,
-    "heuristic": HeuristicAgent,
-    "qlearning": QLearningAgent,
-    "my_agent": MyAgent,  # Добавить здесь
-}
-```
-
-3. **Обновление C++** - не требуется! Список агентов запрашивается из API.
+- `cpp/config.json.example` хранится в репозитории как шаблон.
+- `cpp/config.json` предназначен для локальных секретов и не должен попадать в Git.
+- Если реальный Telegram token когда-либо был закоммичен, его нужно перевыпустить у `@BotFather`.
 
 ---
 
 ## Статус проекта
 
-- [x] Игровой движок (Tic-Tac-Toe 5x5)
-- [x] Игровой движок (Мафия на C++)
-- [x] Базовые агенты (Random, Heuristic, RL)
-- [x] Специализированные агенты для Мафии (Python)
-- [x] **Конкурентное взаимодействие**: Бенчмарк на базе игры "Бункер" (6 типов личностей LLM, анализ численных характеристик и дискуссии)
-- [x] Обучаемый агент (Q-Learning)
-- [x] REST API (FastAPI)
-- [x] Telegram-бот интерфейс (C++)
-- [x] Интеграция локальных LLM (Gemma 3, Llama 3.2, Phi-3/4, Qwen) через Ollama
-- [x] Архитектура для подключения ChatGPT API (OpenAI)
-- [x] Система генерации "Протоколов взаимодействия" для защиты курсовой
-- [x] Логирование "рассуждений" (Chain of Thought) LLM в консоль API
-- [x] Система ставок и управления состояниями пользователей
-- [x] Визуализация партий (для Крестиков-ноликов)
-- [x] Docker контейнеризация
-- [x] Микросервисная архитектура (Python API + C++ Client)
-- [x] Ролевая модель Мафии (Дон, Шериф, Доктор, Мафия, Мирный)
-- [x] **OpenAI Integration**: Возможность добавить свой API Key через настройки бота.
-- [x] **Fast Presentation Mode**: Использование легковесных моделей (Llama 3.2 1B, Phi-4 Mini) для мгновенного инференса.
-- [ ] Поддержка других игр (Шахматы/Го)
+- [x] Tic-Tac-Toe 5x5: Python engine, агенты, API, визуализация.
+- [x] Mafia: C++ engine, Python endpoints для действий и чата агентов.
+- [x] Bunker: C++ engine, Python endpoints для действий и чата агентов.
+- [x] Telegram bot на C++.
+- [x] FastAPI gateway.
+- [x] Интеграция Ollama для локальных LLM.
+- [x] Частичная интеграция OpenAI через пользовательский API key.
+- [x] JSON-статистика бенчмарка.
+- [x] Docker Compose.
+- [ ] Стабильный общий pytest-прогон без ручной настройки окружения.
+- [ ] CI/CD.
+- [ ] Долговременное хранилище вместо JSON-файла статистики.
 
 ---
 
 ## Troubleshooting
 
-### 🔴 Бот не подключается к API
+### API не отвечает
 
-**Локальная разработка:**
 ```bash
-# Проверьте что API запущен
 curl http://localhost:8000/
-
-# Проверьте config.json
-cat cpp/config.json  # Должен быть "http://localhost:8000"
-```
-
-**Docker:**
-```bash
-# Проверьте что оба контейнера запущены
-docker-compose ps
-
-# Проверьте логи API
 docker-compose logs python-api
-
-# Проверьте сеть
-docker network inspect courseworkhse_ai-platform
 ```
 
-### 🔴 API возвращает ошибки
+### Бот не видит API
+
+- В Docker `api_url` должен быть `http://python-api:8000`.
+- При локальном запуске `api_url` должен быть `http://localhost:8000`.
+
+### LLM-агенты не отвечают
 
 ```bash
-# Проверьте Python зависимости
-cd python
-pip install -r requirements.txt
-
-# Запустите тесты
-python3 -m pytest tests/ -v
+ollama list
+curl http://localhost:11434/api/tags
 ```
 
-### 🔴 C++ бот не собирается
+Проверьте, что Ollama запущен и нужная модель скачана.
+
+### C++ бот не собирается
+
+macOS:
 
 ```bash
-# Убедитесь что все зависимости установлены
-brew list | grep -E "(cmake|jsoncpp|curl)"  # macOS
-dpkg -l | grep -E "(cmake|jsoncpp|curl)"    # Ubuntu
+brew install cmake jsoncpp libcurl
+```
 
-# Очистите build директорию
-cd cpp
-rm -rf build
-mkdir build && cd build
-cmake ..
-make
+Ubuntu/Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y cmake libcurl4-openssl-dev libjsoncpp-dev build-essential
 ```
 
 ---
 
 ## Лицензия
 
-Этот проект создан в рамках курсовой работы НИУ ВШЭ.
-
----
-
-## Acknowledgments
-
-- Telegram Bot API Documentation
-- FastAPI Documentation
-- Docker Documentation
-- Reinforcement Learning Community
+Проект создан в рамках курсовой работы НИУ ВШЭ.

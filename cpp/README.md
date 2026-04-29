@@ -1,74 +1,72 @@
 # Telegram Bot Client (C++)
 
-Клиентская часть проекта, реализованная на C++. Отвечает за взаимодействие с пользователем через Telegram, управление ставками и запуск игр **через REST API**.
+Клиентская часть проекта, реализованная на C++. Она отвечает за Telegram-интерфейс, меню, состояние пользователей, запуск игр и обращение к Python FastAPI.
+
+В текущей версии C++ содержит игровые движки **Mafia** и **Bunker**. Python API используется для Tic-Tac-Toe, статистики и решений Python/LLM-агентов.
 
 ## Архитектура взаимодействия
 
-```
-Telegram User  ◀──▶  C++ Bot  ──HTTP API──▶  Python FastAPI  ──▶  AI Agents
-                       │                          │
-                       │                          │
-                  libcurl + JSON            Game Engine + ML
+```text
+Telegram User  <-->  C++ Bot  --HTTP/JSON-->  Python FastAPI
+                       |                          |
+                       |                          |
+                 Mafia/Bunker engines       Tic-Tac-Toe, stats,
+                                            LLM agent decisions
 ```
 
-**Ключевые компоненты:**
-- `HttpClient`: HTTP клиент на основе libcurl для взаимодействия с API
-- `GameManager`: Менеджер игр, отправляющий запросы к Python API
-- `TelegramBot`: Обработчик Telegram команд и сообщений
+## Ключевые компоненты
+
+- `HttpClient`: HTTP-клиент на основе libcurl.
+- `GameManager`: запускает Tic-Tac-Toe через Python API, Mafia/Bunker через C++ движки и отправляет статистику в Python API.
+- `TelegramBot`: обработчик команд, меню и сообщений Telegram.
+- `MafiaAgentProxy`, `BunkerAgentProxy`: прокси к Python API для действий и реплик агентов.
 
 ## Возможности
 
-- **Интерфейс**: Удобное меню с кнопками для выбора игры, агента и ставки.
-- **Экономика**: Система ставок и баланса пользователей.
-- **Агенты**: Поддержка различных стратегий (Random, Heuristic, Q-Learning, **LLM**).
-- **Интеграция**: Запуск Python-скриптов и работа с внешними API моделей.
-- **Гибкость**: Автоматическое обнаружение новых типов агентов из Python API — новые LLM-агенты появляются в меню автоматически.
+- Меню Telegram для выбора игр и настроек.
+- Tic-Tac-Toe 5x5 через Python API.
+- Mafia и Bunker через C++ игровые циклы.
+- LLM-агенты через Python API, Ollama и частично OpenAI.
+- JSON-статистика бенчмарка через Python API.
 
 ## Требования
 
-Для сборки проекта необходимы:
+- `cmake`, `make`, `g++` или `clang++` с поддержкой C++17.
+- `libcurl`.
+- `jsoncpp`.
 
-- **Приложения**: `cmake`, `make`, `g++` (или `clang++`) с поддержкой C++17.
-- **Библиотеки**:
-  - `libcurl` (для сетевых запросов)
-  - `jsoncpp` (для работы с JSON)
-
-### Установка зависимостей (macOS)
+### macOS
 
 ```bash
 brew install cmake jsoncpp libcurl
 ```
 
-### Установка зависимостей (Ubuntu/Debian)
+### Ubuntu/Debian
 
 ```bash
 sudo apt-get update
-sudo apt-get install cmake libcurl4-openssl-dev libjsoncpp-dev build-essential
+sudo apt-get install -y cmake libcurl4-openssl-dev libjsoncpp-dev build-essential
 ```
 
 ## Сборка
 
-Проект использует систему сборки CMake.
-
 ```bash
-# Перейдите в директорию cpp
 cd cpp
-
-# Создайте директорию для сборки
-mkdir build && cd build
-
-# Сгенерируйте файлы сборки
+mkdir -p build
+cd build
 cmake ..
-
-# Соберите проект
 make
 ```
 
 ## Конфигурация
 
-Перед запуском необходимо создать или отредактировать файл `config.json` в директории `cpp/`.
+Перед запуском создайте `cpp/config.json` из шаблона:
 
-Пример `config.json`:
+```bash
+cp cpp/config.json.example cpp/config.json
+```
+
+Локальный запуск:
 
 ```json
 {
@@ -77,7 +75,8 @@ make
 }
 ```
 
-Для Docker:
+Docker:
+
 ```json
 {
     "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
@@ -85,40 +84,41 @@ make
 }
 ```
 
-**Параметры:**
-- **bot_token**: Токен вашего бота, полученный от @BotFather в Telegram.
-- **api_url**: URL Python FastAPI сервиса.
-  - Локально: `http://localhost:8000`
-  - Docker: `http://python-api:8000`
+`cpp/config.json` содержит секреты и не должен попадать в Git.
 
 ## Запуск
 
-После успешной сборки и настройки:
+Сначала запустите Python API, затем:
 
 ```bash
+cd cpp/build
 ./tg_bot
 ```
 
 ## Структура кода
 
-- **`TgBot/`**: Логика бота.
-  - `main.cpp`: Точка входа, инициализация и проверка API.
-  - `bot.cpp/hpp`: Класс `TelegramBot`, обработка сообщений и Long Polling.
-  - `keyboard.cpp/hpp`: Генерация клавиатур для меню.
-- **`src/`**: Вспомогательные модули.
-  - `http_client.cpp/hpp`: HTTP клиент на основе libcurl для API запросов.
-  - `game_manager.cpp/hpp`: Менеджер игр, взаимодействие с Python API.
-  - `user_state.hpp`: Структура состояния пользователя.
-  - `config.cpp/hpp`: Загрузка конфигурации.
+- `TgBot/main.cpp`: точка входа, загрузка конфига, проверка API.
+- `TgBot/bot.cpp`, `TgBot/bot.hpp`: Telegram bot loop, сообщения и сценарии игр.
+- `TgBot/keyboard.cpp`, `TgBot/keyboard.hpp`: генерация меню.
+- `src/http_client.cpp`, `src/http_client.hpp`: HTTP-запросы.
+- `src/game_manager.cpp`, `src/game_manager.hpp`: координация игр и статистики.
+- `src/mafia_game.cpp`, `src/mafia_game.hpp`: C++ движок Mafia.
+- `src/bunker_game.cpp`, `src/bunker_game.hpp`: C++ движок Bunker.
+- `src/mafia_agent_proxy.cpp`, `src/bunker_agent_proxy.cpp`: запросы к Python API для агентов.
+- `src/config.cpp`, `src/config.hpp`: загрузка `config.json` и `API_URL`.
+- `src/user_state.hpp`: состояние пользователя Telegram.
 
 ## Зависимости между модулями
 
-```
+```text
 main.cpp
-  ├─▶ config.cpp        (загрузка конфигурации)
-  ├─▶ game_manager.cpp  (взаимодействие с API)
-  │     └─▶ http_client.cpp  (HTTP запросы)
-  └─▶ bot.cpp           (Telegram интерфейс)
-        └─▶ keyboard.cpp     (UI элементы)
+  +-- config.cpp
+  +-- game_manager.cpp
+  |     +-- http_client.cpp
+  |     +-- mafia_game.cpp
+  |     +-- bunker_game.cpp
+  |     +-- mafia_agent_proxy.cpp
+  |     +-- bunker_agent_proxy.cpp
+  +-- bot.cpp
+        +-- keyboard.cpp
 ```
-

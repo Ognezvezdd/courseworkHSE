@@ -1,6 +1,6 @@
-# Мафия на Python
+# Mafia Python API
 
-Часть курсовой, посвященная логике агентов для игры "Мафия", интегрированная с C++ ядром через FastAPI.
+Python-часть Mafia отвечает за модели данных, FastAPI endpoints и логику выбора действий агентов. Игровой цикл Mafia в текущей версии находится в C++ (`cpp/src/mafia_game.*`), а Python-сервис вызывается C++ прокси-агентами.
 
 ## Основные компоненты (в `src/`)
 
@@ -15,13 +15,16 @@
 Содержит логику для конкретных ролей:
 - `base_strategy.py`: Интерфейс `RoleStrategy`.
 - `random_strategies.py`: Случайные ходы для всех ролей.
-- `rl_strategy.py`: **[В РАЗРАБОТКЕ]** Заготовка для обучения с подкреплением (Reinforcement Learning).
+
+Примечание: `unified_agents.py` сейчас импортирует `rl_strategy.py`, но такого файла в репозитории нет. Поэтому RL-часть Mafia требует доработки перед запуском полного набора тестов.
 
 ### `agents/unified_agents.py`
 Содержит унифицированных агентов, способных играть за любую роль:
 - `RandomAgent`: Использует `Random*Strategy` для любой выпавшей роли.
-- `RLAgent`: Превращает `GameState` в действия через `LearningStrategy`.
-- **`LLMAgent`**: Использует локальную языковую модель (Gemma 3) для анализа состояния игры, блефа и принятия решений. Позволяет агентам «общаться» в чате на основе контекста игры.
+- `RLAgent`: заготовка под `LearningStrategy`; сейчас зависит от отсутствующего `rl_strategy.py`.
+
+### `agents/llm_gemma3_agent.py`
+Содержит `LLMAgent`, который использует локальную языковую модель через Ollama для анализа состояния игры, блефа и принятия решений.
 
 ### `agent_factory.py`
 Фабрика создает агентов по типу интеллекта (`RANDOM`, `RL`, `LLM`...), а не по роли. Роль передается агенту в момент принятия решения.
@@ -40,16 +43,19 @@ FastAPI роутер, реализующий эндпоинты:
 
 ## Тестирование
 
-Запуск тестов из корня проекта:
+Запуск тестов из корня `python/`:
 ```bash
-pytest python/games/mafia/src/tests/ -v
+cd python
+python3 -m pytest games/mafia/src/tests -v
 ```
 
 Запуск конкретных тестов:
 ```bash
-pytest python/games/mafia/src/tests/test_agents.py -v
-pytest python/games/mafia/src/tests/test_llm_agent.py -v
+python3 -m pytest games/mafia/src/tests/test_agents.py -v
+python3 -m pytest games/mafia/src/tests/test_llm_agent.py -v
 ```
+
+Текущее состояние: часть тестов Mafia не проходит коллекцию, пока не будет добавлен или отключен отсутствующий `strategies/rl_strategy.py`.
 
 ## Интеграция с C++
 

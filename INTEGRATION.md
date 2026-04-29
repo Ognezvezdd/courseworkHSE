@@ -1,341 +1,155 @@
-# 🎯 Интеграция Python API и C++ Telegram Bot
+# Интеграция Python API и C++ Telegram Bot
 
-## Что было сделано
+Этот файл описывает текущее состояние интеграции между Python FastAPI и C++ Telegram-ботом.
 
-### 📋 Краткое описание
+## Текущая схема
 
-Реализована микросервисная архитектура для платформы AI Agents Platform:
-- **Python FastAPI** - игровой движок и REST API
-- **C++ Telegram Bot** - клиентский интерфейс
-- **Docker Compose** - оркестрация сервисов
-
-### 🏗️ Архитектура
-
-#### Было (до рефакторинга):
-```
-C++ Bot → executes → Python Script (run_game.py)
-   ↓
-Direct process execution (popen)
+```text
+Telegram User
+     |
+     v
+C++ Telegram Bot
+     |
+     | HTTP/JSON
+     v
+Python FastAPI
 ```
 
-**Проблемы старого подхода:**
-- ❌ Тесная связанность компонентов
-- ❌ Сложность развертывания
-- ❌ Невозможность масштабирования
-- ❌ Сложность тестирования
-- ❌ Зависимость от локальных путей
-
-#### Стало (новая архитектура):
-```
-┌──────────────┐    HTTP/REST    ┌──────────────┐
-│  C++ Bot     │ ◀──────────────▶ │  Python API  │
-│ (Container)  │    JSON         │ (Container)  │
-└──────────────┘                  └──────────────┘
-      │                                  │
-      │                                  │
-      ▼                                  ▼
- Telegram Users                   AI Agents Engine
-```
-
-**Преимущества новой архитектуры:**
-- ✅ Микросервисная архитектура
-- ✅ Независимое развертывание сервисов
-- ✅ Легкое масштабирование (можно запустить несколько инстансов)
-- ✅ Простое тестирование (каждый сервис отдельно)
-- ✅ Единственная точка входа через API
-- ✅ Один Docker Compose для запуска всего
-
----
-
-## 📦 Новые файлы
+## Разделение ответственности
 
 ### Python
-1. **`python/Dockerfile`** (обновлен)
-   - Настроен на запуск uvicorn вместо demo скрипта
-   - CMD: `uvicorn api:app --host 0.0.0.0 --port 8000`
 
-2. **`python/.dockerignore`**
-   - Оптимизация сборки Docker образа
-   - Исключение ненужных файлов (cache, output, etc.)
-
-### C++
-1. **`cpp/Dockerfile`** (новый)
-   - Ubuntu 22.04 base
-   - Установка всех зависимостей (cmake, curl, jsoncpp)
-   - Автоматическая компиляция проекта
-
-2. **`cpp/src/http_client.hpp`** (новый)
-   - HTTP клиент на основе libcurl
-   - Методы: GET, POST с JSON телом
-
-3. **`cpp/src/http_client.cpp`** (новый)
-   - Реализация HTTP клиента
-   - Поддержка JSON headers
-   - Error handling
-
-4. **`cpp/src/game_manager.hpp`** (полностью переписан)
-   - Убраны python_path и script_path
-   - Добавлен api_url
-   - Новые методы: checkApiHealth(), getAvailableAgents()
-
-5. **`cpp/src/game_manager.cpp`** (полностью переписан)
-   - Все вызовы через HTTP API
-   - JSON парсинг ответов
-   - Взаимодействие через HttpClient
-
-6. **`cpp/src/config.hpp`** (обновлен)
-   - Структура Config теперь содержит только bot_token и api_url
-
-7. **`cpp/src/config.cpp`** (обновлен)
-   - Загрузка api_url вместо путей к Python
-
-8. **`cpp/TgBot/main.cpp`** (обновлен)
-   - Инициализация GameManager с api_url
-   - Проверка здоровья API при старте
-   - Получение списка агентов от API
-
-9. **`cpp/CMakeLists.txt`** (обновлен)
-   - Добавлен http_client.cpp в SOURCES
-
-10. **`cpp/config.json`** (обновлен)
-    - Новый формат: `{"bot_token": "...", "api_url": "..."}`
-
-11. **`cpp/config.json.example`** (новый)
-    - Шаблон конфигурации для новых пользователей
-
-12. **`cpp/.dockerignore`** (новый)
-    - Оптимизация сборки
-
-### Root directory
-1. **`docker-compose.yml`** (новый)
-   - Определение двух сервисов: python-api и telegram-bot
-   - Настройка сети ai-platform
-   - Health checks для python-api
-   - Правильная последовательность запуска (depends_on)
-   - Монтирование volumes для persistence
-
-2. **`README.md`** (полностью переписан)
-   - Подробное описание новой архитектуры
-   - API endpoints документация
-   - Docker Compose инструкции
-   - Troubleshooting секция
-   - Примеры использования
-
-3. **`QUICKSTART.md`** (новый)
-   - Пошаговая инструкция для начинающих
-   - 3-минутный старт
-   - Решение типичных проблем
-
-4. **`deploy.sh`** (новый)
-   - Bash скрипт для управления платформой
-   - Команды: start, stop, restart, logs, status
-   - Автоматическая проверка конфигурации
-
-5. **`Makefile`** (новый)
-   - Make команды для удобства
-   - Цели: build, up, down, logs, test, clean
-   - Цветной вывод
-   - Help команда
-
-6. **`.gitignore`** (обновлен)
-   - Расширенный список исключений
-   - Защита config.json с секретами
-   - Исключение build артефактов
-
----
-
-## 🔧 Изменения в существующих файлах
-
-### Python
-- **`api.py`** - уже был готов, никаких изменений не требуется
-- **`Dockerfile`** - изменена CMD команда на uvicorn
+- `python/main_service.py` — основная точка входа FastAPI.
+- `python/games/tictactoe/src/api.py` — API и движок Tic-Tac-Toe.
+- `python/games/mafia/src/api.py` — endpoints для действий и сообщений Mafia-агентов.
+- `python/games/bunker/src/api.py` — endpoints для действий и сообщений Bunker-агентов.
+- `python/games/stats/api.py` — endpoints статистики.
+- `python/games/common/llm_client.py` — общий клиент Ollama/OpenAI.
+- `python/prompts/` — промпты для LLM-агентов.
 
 ### C++
-- **Все файлы в `src/`** - полностью переписаны для HTTP API
-- **`TgBot/main.cpp`** - обновлен для работы с новой архитектурой
-- **`CMakeLists.txt`** - добавлен http_client.cpp
 
----
+- `cpp/TgBot/` — Telegram UI, меню и обработка команд.
+- `cpp/src/game_manager.*` — координация запусков игр и запросов к API.
+- `cpp/src/http_client.*` — HTTP-клиент на libcurl.
+- `cpp/src/mafia_game.*` — текущий движок Mafia.
+- `cpp/src/bunker_game.*` — текущий движок Bunker.
+- `cpp/src/mafia_agent_proxy.*` и `cpp/src/bunker_agent_proxy.*` — прокси к Python API для действий агентов.
 
-## 🚀 Как использовать
+## Как запускается каждая игра
 
-### Вариант 1: Docker Compose (рекомендуется)
+| Игра | Где выполняется игровой цикл | Как используются Python endpoints |
+| --- | --- | --- |
+| Tic-Tac-Toe | Python | `POST /game/play`, `POST /train` |
+| Mafia | C++ | `POST /mafia/agent_action`, `POST /mafia/agent_chat` |
+| Bunker | C++ | `POST /bunker/agent_action`, `POST /bunker/agent_chat` |
 
-```bash
-# 1. Настройте токен
-cp cpp/config.json.example cpp/config.json
-# Отредактируйте cpp/config.json
+## Docker Compose
 
-# 2. Запустите
-docker-compose up --build
+`docker-compose.yml` поднимает два сервиса:
 
-# Или используйте удобные скрипты:
-./deploy.sh start
-# или
-make up
+- `python-api` — FastAPI на порту `8000`.
+- `telegram-bot` — C++ бот, который ждет healthcheck Python API.
+
+Конфигурация бота монтируется из `./cpp/config.json` в `/app/config.json`.
+
+Для Docker в `cpp/config.json` должен быть:
+
+```json
+{
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "api_url": "http://python-api:8000"
+}
 ```
 
-### Вариант 2: Локальная разработка
+## Локальный запуск
 
-**Terminal 1 - Python API:**
+### Terminal 1: Python API
+
 ```bash
 cd python
-pip install -r requirements.txt
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+python3 -m pip install -r common/requirements.txt
+python3 -m uvicorn main_service:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Terminal 2 - C++ Bot:**
+### Terminal 2: C++ Bot
+
 ```bash
 cd cpp
-mkdir build && cd build
+mkdir -p build
+cd build
 cmake ..
 make
 ./tg_bot
 ```
 
----
+Для локального запуска в `cpp/config.json` используйте:
 
-## 📊 API Endpoints
-
-### `GET /`
-Проверка здоровья
-
-### `GET /agents`
-Список доступных агентов
-
-### `POST /game/play`
-Запуск игры
 ```json
 {
-  "agent_x": "heuristic",
-  "agent_o": "random",
-  "seed": 42
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "api_url": "http://localhost:8000"
 }
 ```
 
-### `POST /train`
-Обучение Q-Learning агента
-```json
-{
-  "agent_type": "qlearning",
-  "episodes": 1000,
-  "seed": 42,
-  "opponent_type": "random"
-}
-```
+## Проверка интеграции
 
----
+### Python API работает
 
-## 🎯 Ключевые улучшения
-
-### Разделение ответственности
-- Python - только игровая логика и AI
-- C++ - только Telegram интерфейс
-- Четкий контракт через REST API
-
-### Масштабируемость
-- Можно запустить несколько инстансов бота
-- Можно запустить несколько инстансов API
-- Load balancing через nginx (в будущем)
-
-### Тестируемость
-- Python API можно тестировать через curl/Postman
-- C++ бот можно тестировать с mock API
-- Unit тесты для каждого компонента независимо
-
-### Развертывание
-- Одна команда для запуска всего: `docker-compose up`
-- Автоматическая сборка и настройка
-- Health checks и зависимости между сервисами
-
-### DevOps
-- Готово для CI/CD
-- Легко добавить monitoring (Prometheus/Grafana)
-- Легко добавить logging (ELK stack)
-
----
-
-## 🔍 Что проверить
-
-### 1. Python API работает
 ```bash
 curl http://localhost:8000/
 curl http://localhost:8000/agents
+curl http://localhost:8000/docs
 ```
 
-### 2. C++ бот подключается к API
+### Бот подключается к API
+
 ```bash
-docker-compose logs telegram-bot | grep "API доступен"
+docker-compose logs telegram-bot
 ```
 
-### 3. Telegram бот отвечает
-Отправьте `/start` вашему боту в Telegram
+В логах должна быть успешная проверка API.
 
-### 4. Игра запускается
-Используйте меню бота для выбора агентов и запуска игры
+### Tic-Tac-Toe endpoint
 
----
-
-## 📈 Следующие шаги (опционально)
-
-1. **CI/CD**: GitHub Actions для автоматического тестирования и деплоя
-2. **Monitoring**: Prometheus + Grafana для мониторинга
-3. **Logging**: ELK stack для централизованных логов
-4. **Load Balancing**: nginx для распределения нагрузки
-5. **Database**: PostgreSQL для хранения истории игр
-6. **Web UI**: React фронтенд для просмотра игр в браузере
-
----
-
-## ✅ Чеклист для финальной проверки
-
-- [x] Python API запускается в Docker
-- [x] C++ бот запускается в Docker
-- [x] Бот подключается к API
-- [x] API endpoints работают
-- [x] Telegram бот отвечает на команды
-- [x] Игры запускаются через бота
-- [x] Docker Compose работает
-- [x] Документация обновлена
-- [x] README содержит инструкции
-- [x] Скрипты деплоя работают
-
----
-
-## 💡 Tips
-
-### Просмотр логов
 ```bash
-# Все логи
-docker-compose logs -f
-
-# Только API
-docker-compose logs -f python-api
-
-# Только бот
-docker-compose logs -f telegram-bot
-```
-
-### Перезапуск после изменений
-```bash
-# Пересборка и запуск
-docker-compose up --build
-
-# Или
-make restart
-```
-
-### Тестирование API
-```bash
-# Swagger UI
-open http://localhost:8000/docs
-
-# curl
 curl -X POST http://localhost:8000/game/play \
   -H "Content-Type: application/json" \
   -d '{"agent_x":"heuristic","agent_o":"random","seed":42}'
 ```
 
----
+### Stats endpoint
 
-**✨ Готово! Платформа полностью интегрирована и готова к использованию!**
+```bash
+curl http://localhost:8000/stats/report
+```
+
+## LLM
+
+Для Ollama-агентов должен быть доступен Ollama:
+
+```bash
+OLLAMA_HOST=0.0.0.0 ollama serve
+ollama pull gemma3
+```
+
+В Docker Python API обращается к Ollama по `http://host.docker.internal:11434/api/generate`. Локально Python пробует тот же адрес и в некоторых агентах fallback на `http://localhost:11434/api/generate`.
+
+## Текущее состояние тестов
+
+Тесты находятся не в одной папке `tests`, а внутри пакетов игр:
+
+```bash
+cd python
+python3 -m pytest games/tictactoe/src/tests -v
+python3 -m pytest games/mafia/src/tests -v
+python3 -m pytest games/bunker/src/tests -v
+```
+
+Полный pytest-прогон пока требует доработки импортов и изоляции LLM-тестов. `python/llm/tests/test_ollama_basic.py` выполняет реальный запрос к Ollama при импорте.
+
+## Секреты
+
+- `cpp/config.json.example` — шаблон, его можно хранить в Git.
+- `cpp/config.json` — локальный файл с токеном, его нельзя коммитить.
+- Если настоящий Telegram token попал в Git, его нужно перевыпустить у `@BotFather`.

@@ -1,27 +1,20 @@
-
-import sys
 import os
 from typing import List, Optional, Dict, Any
-import time
 import uuid
 import matplotlib
-matplotlib.use('Agg')  # Set backend for headless environment
+matplotlib.use('Agg')
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# Add current directory to sys.path to ensure modules can be imported
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from agents.heuristic_agent import HeuristicAgent
-from agents.qlearning_agent import QLearningAgent
-from agents.random_agent import RandomAgent
-from agents.base_agent import BaseAgent
-from agents.llm_gemma3_agent import LLMAgent
-from game.engine import run_game
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
+from games.tictactoe.src.agents.base_agent import BaseAgent
+from games.tictactoe.src.agents.llm_gemma3_agent import LLMAgent
+from games.tictactoe.src.game.engine import run_game
 from visualization.renderer import GameRenderer
 
-# Ensure output directory exists
 OUTPUT_DIR = "output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -82,13 +75,11 @@ async def root():
 async def get_agents():
     """Return list of available agent types."""
     agents = ["random", "heuristic", "qlearning"]
-    # Добавляем LLM-модели для бенчмарка
     for model_key in MODEL_MAP.keys():
         agents.append(f"llm_{model_key}")
     return {"agents": agents}
 
 def create_agent(agent_type: str, name_suffix: str = "") -> BaseAgent:
-    # Обработка специфических LLM-моделей (llm_gemma3, llm_llama3.2_1b и т.д.)
     if agent_type.startswith("llm_"):
         model_key = agent_type[4:]
         model_name = MODEL_MAP.get(model_key, model_key.replace("_", ":"))
@@ -112,7 +103,6 @@ async def play_game(request: GameRequest):
     if not winner:
         winner = "draw"
         
-    # Generate summary image
     img_filename = f"game_{uuid.uuid4().hex[:8]}.png"
     img_path = os.path.join(OUTPUT_DIR, img_filename)
     
@@ -141,9 +131,6 @@ async def train_agent(request: TrainRequest):
     opponent = create_agent(request.opponent_type, "Opponent")
     
     stats = agent.train(opponent, episodes=request.episodes, seed=request.seed)
-    
-    # In a real scenario, we might want to save the q-table here
-    # For now, we just return the stats
     
     return TrainResult(
         success=True,

@@ -1,8 +1,4 @@
-"""
-Тесты игрового поля (Board).
-"""
-
-from game.board import Board
+from games.tictactoe.src.game.board import Board
 
 
 class TestBoardInitialization:

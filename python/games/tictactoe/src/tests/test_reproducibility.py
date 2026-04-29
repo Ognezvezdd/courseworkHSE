@@ -1,11 +1,7 @@
-"""
-Тесты воспроизводимости результатов.
-"""
-
-from agents.heuristic_agent import HeuristicAgent
-from agents.qlearning_agent import QLearningAgent
-from agents.random_agent import RandomAgent
-from game.engine import run_game
+from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
+from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
+from games.tictactoe.src.agents.random_agent import RandomAgent
+from games.tictactoe.src.game.engine import run_game
 
 
 class TestReproducibility:
