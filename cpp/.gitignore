@@ -2,4 +2,5 @@ build/
 *.o
 *.out
 tg_bot
+config.json
 .DS_Store
