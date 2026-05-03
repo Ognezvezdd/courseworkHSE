@@ -1,5 +1,5 @@
 services:
-  # Python API - Игровой движок
+  # Python API
   python-api:
     build:
       context: ./python
@@ -22,12 +22,10 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
-      # Монтируем output для сохранения визуализаций
       - ./python/output:/app/output
-      # Монтируем agents для сохранения обученных моделей
       - ./python/agents:/app/agents
 
-  # C++ Telegram Bot - Клиентский интерфейс
+  # C++ Telegram Bot
   telegram-bot:
     build:
       context: ./cpp
@@ -42,9 +40,8 @@ services:
     environment:
       - API_URL=http://python-api:8000
     volumes:
-      # Монтируем config.json из хоста
+      # config.json
       - ./cpp/config.json:/app/config.json:ro
-      # Монтируем общую папку с изображениями (такую же как у python-api)
       - ./python/output:/app/output:ro
     command: [ "./build/tg_bot" ]
 
