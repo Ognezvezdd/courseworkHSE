@@ -11,6 +11,7 @@ ENV TZ=Europe/Moscow
 
 # Установка необходимых пакетов и библиотек
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
     build-essential \
     cmake \
     git \

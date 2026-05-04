@@ -93,13 +93,13 @@ def get_personality_and_model(agent_type: str):
 def fallback_action(req: BunkerAgentRequest) -> BunkerAction:
     phase = phase_to_str(req.phase)
     if phase != "VOTING":
-        return BunkerAction(action_type="PASS")
+        return BunkerAction(action_type="PASS", used_fallback=True, fallback_reason="non_voting_phase")
     my_id = int(req.my_character.get("player_id", -1))
     alive = [p for p in req.players if p.get("is_alive", False) and p.get("player_id") != my_id]
     if not alive:
-        return BunkerAction(action_type="PASS")
+        return BunkerAction(action_type="PASS", used_fallback=True, fallback_reason="no_valid_vote_target")
     target = random.choice(alive)["player_id"]
-    return BunkerAction(action_type="VOTE_EXILE", target_id=int(target))
+    return BunkerAction(action_type="VOTE_EXILE", target_id=int(target), used_fallback=True, fallback_reason="safe_vote_fallback")
 
 
 @router.post("/agent_action", response_model=BunkerAction)
@@ -148,5 +148,4 @@ async def bunker_agent_chat(req: BunkerAgentRequest):
     if phase == "DISCUSSION":
         return ChatResponse(message="Нам нужно оставить в бункере самых полезных игроков.")
     return ChatResponse(message="")
-
 

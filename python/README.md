@@ -40,6 +40,8 @@ The API will be available at `http://localhost:8000/docs`.
 ### Running Tests
 
 ```bash
+python3 -m pytest -q
+
 # Run Tic-Tac-Toe tests
 python3 -m pytest games/tictactoe/src/tests -v
 
@@ -50,7 +52,13 @@ python3 -m pytest games/mafia/src/tests -v
 python3 -m pytest games/bunker/src/tests -v
 ```
 
-Current note: the complete test collection still needs cleanup. Some tests depend on package import context, and `llm/tests/test_ollama_basic.py` calls Ollama during import, so run it only when Ollama is available.
+Manual integration check for a running Mafia API:
+
+```bash
+python3 games/mafia/src/tests/manual_mafia_llm_api_check.py
+```
+
+Optional Ollama smoke test:
 
 ```bash
 python3 -m pytest llm/tests/test_ollama_basic.py -v

@@ -46,3 +46,5 @@ class AgentAction(BaseModel):
     action_type: str  # VOTE_KILL, MAFIA_KILL, SHERIFF_CHECK, etc.
     target_id: int = -1
     text_message: str = ""
+    used_fallback: bool = False
+    fallback_reason: str = ""

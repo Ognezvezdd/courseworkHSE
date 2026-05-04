@@ -1,10 +1,9 @@
 import json
 import re
-import requests
 import os
-from typing import Dict, Any
 
 from ..models import GameState, AgentAction
+from games.common.llm_client import LLMClient
 
 ROLE_PROMPT_MAP = {
     "MAFIA": "mafia.txt",
@@ -43,6 +42,9 @@ class LLMAgent:
             self.model = MODEL_MAP.get(model_part.lower(), model_part.replace("_", ":"))
         else:
             self.model = model
+
+        self.client = LLMClient(provider="ollama", model=self.model)
+        self.last_llm_result = None
 
         # Буфер последних N сообщений для анти-спама
         self._last_messages: list[str] = []
@@ -171,8 +173,7 @@ class LLMAgent:
                 # Пробуем найти JSON с вложенными фигурными скобками
                 match = re.search(r'\{.*\}', text, re.DOTALL)
             if not match:
-                print(f"[LLMAgent] No JSON found in: {text[:200]}")
-                return self._fallback_action(game_state, my_role)
+                return self._fallback_action(game_state, my_role, "invalid_llm_json")
 
             data = json.loads(match.group(0))
             action_type = str(data.get("action_type", "PASS")).upper()
@@ -205,9 +206,9 @@ class LLMAgent:
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             print(f"[LLMAgent JSON Parse Error]: {e}\nRaw: {text[:300]}")
-            return self._fallback_action(game_state, my_role)
+            return self._fallback_action(game_state, my_role, "invalid_llm_json")
 
-    def _fallback_action(self, game_state: GameState, my_role: str) -> AgentAction:
+    def _fallback_action(self, game_state: GameState, my_role: str, reason: str = "safe_fallback") -> AgentAction:
         """Возвращает безопасное действие в зависимости от фазы."""
         import random
         phase = game_state.phase
@@ -220,55 +221,37 @@ class LLMAgent:
                 "Нужно проанализировать вчерашние события.",
                 "Кто вёл себя слишком тихо?",
             ]
-            return AgentAction(action_type="CHAT_MESSAGE", text_message=random.choice(fallbacks))
+            return AgentAction(action_type="CHAT_MESSAGE", text_message=random.choice(fallbacks), used_fallback=True, fallback_reason=reason)
 
         if phase == "DAY_VOTING" and alive:
-            return AgentAction(action_type="VOTE_KILL", target_id=random.choice(alive))
+            return AgentAction(action_type="VOTE_KILL", target_id=random.choice(alive), used_fallback=True, fallback_reason=reason)
 
         if phase == "NIGHT_MAFIA" and my_role.upper() in ("MAFIA", "DON") and alive:
-            return AgentAction(action_type="MAFIA_KILL", target_id=random.choice(alive))
+            return AgentAction(action_type="MAFIA_KILL", target_id=random.choice(alive), used_fallback=True, fallback_reason=reason)
 
         if phase == "NIGHT_SHERIFF" and my_role.upper() == "SHERIFF" and alive:
-            return AgentAction(action_type="SHERIFF_CHECK", target_id=random.choice(alive))
+            return AgentAction(action_type="SHERIFF_CHECK", target_id=random.choice(alive), used_fallback=True, fallback_reason=reason)
 
         if phase == "NIGHT_DOCTOR" and my_role.upper() == "DOCTOR" and alive:
             target = game_state.my_id if game_state.my_id in [p.id for p in game_state.players] else (alive[0] if alive else -1)
-            return AgentAction(action_type="DOCTOR_HEAL", target_id=target)
+            return AgentAction(action_type="DOCTOR_HEAL", target_id=target, used_fallback=True, fallback_reason=reason)
 
-        return AgentAction(action_type="PASS")
+        return AgentAction(action_type="PASS", used_fallback=True, fallback_reason=reason)
 
     def decide_action(self, game_state: GameState, my_role: str) -> AgentAction:
         prompt = self.build_prompt(game_state, my_role)
+        result = self.client.call_result(prompt)
+        self.last_llm_result = result
 
-        api_url = os.getenv("OLLAMA_API_URL", "http://host.docker.internal:11434/api/generate")
+        if not result.text:
+            return self._fallback_action(
+                game_state,
+                my_role,
+                result.fallback_reason or "empty_llm_response",
+            )
 
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "num_predict": 256,
-            }
-        }
-
-        def try_request(url: str) -> str | None:
-            try:
-                r = requests.post(url, json=payload, timeout=60)
-                r.raise_for_status()
-                return r.json().get("response", "")
-            except Exception as err:
-                print(f"[LLMAgent] Request to {url} failed: {err}")
-                return None
-
-        text = try_request(api_url)
-        if text is None and "host.docker.internal" in api_url:
-            print("[LLMAgent] Trying localhost fallback...")
-            text = try_request("http://localhost:11434/api/generate")
-
-        if text is None:
-            return self._fallback_action(game_state, my_role)
-
-        print(f"\n[{self.name} ({self.model}) | {my_role} | {game_state.phase}]:\n{text[:500]}\n{'─'*50}")
-        return self.parse_action(text, game_state, my_role)
+        action = self.parse_action(result.text, game_state, my_role)
+        if result.used_fallback and not action.used_fallback:
+            action.used_fallback = True
+            action.fallback_reason = result.fallback_reason
+        return action

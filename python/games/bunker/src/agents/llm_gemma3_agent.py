@@ -24,6 +24,7 @@ class BunkerLLMAgent:
         provider, model_full = MODEL_MAP.get(model, ("ollama", model))
         self.client = LLMClient(provider=provider, model=model_full, api_key=openai_api_key)
         self.personality = personality
+        self.last_llm_result = None
         self._last_messages = [] 
 
     def _build_prompt(self, state: BunkerState) -> str:
@@ -78,7 +79,14 @@ class BunkerLLMAgent:
         # Добавляем инструкцию про Chain of Thought для логгера
         full_prompt = prompt + "\n\nПеред тем как выдать JSON, напиши кратко свои рассуждения (Thinking Process) в свободном стиле, а затем сам JSON в блоке ```json...```."
         
-        response_text = self.client.call(full_prompt)
+        result = self.client.call_result(full_prompt)
+        self.last_llm_result = result
+        response_text = result.text
+
+        if not response_text:
+            action = self._fallback_action(state)
+            action.fallback_reason = result.fallback_reason or "empty_llm_response"
+            return action
         
         # Разделяем рассуждение и JSON
         thinking = ""
@@ -99,7 +107,11 @@ class BunkerLLMAgent:
         # Логируем
         bunker_logger.log_interaction(self.name, prompt, json_content, thinking)
         
-        return self._parse(json_content, state)
+        action = self._parse(json_content, state)
+        if result.used_fallback and not action.used_fallback:
+            action.used_fallback = True
+            action.fallback_reason = result.fallback_reason
+        return action
 
     def _parse(self, text: str, state: BunkerState) -> BunkerAction:
         try:
@@ -116,7 +128,7 @@ class BunkerLLMAgent:
             if action_type == "VOTE_EXILE":
                 alive_ids = {p.player_id for p in state.players if p.is_alive and p.player_id != state.my_player_id}
                 if target_id not in alive_ids:
-                    return self._fallback_action(state)
+                    return self._fallback_action(state, "invalid_vote_target")
             
             if message:
                 if message in self._last_messages:
@@ -128,13 +140,13 @@ class BunkerLLMAgent:
 
             return BunkerAction(action_type=action_type, target_id=target_id, text_message=message)
         except Exception:
-            return self._fallback_action(state)
+            return self._fallback_action(state, "invalid_llm_json")
 
-    def _fallback_action(self, state: BunkerState) -> BunkerAction:
+    def _fallback_action(self, state: BunkerState, reason: str = "safe_fallback") -> BunkerAction:
         if state.phase == "VOTING":
             alive_others = [p for p in state.players if p.is_alive and p.player_id != state.my_player_id]
             if alive_others:
                 import random
                 target = random.choice(alive_others).player_id
-                return BunkerAction(action_type="VOTE_EXILE", target_id=target)
-        return BunkerAction(action_type="PASS")
+                return BunkerAction(action_type="VOTE_EXILE", target_id=target, used_fallback=True, fallback_reason=reason)
+        return BunkerAction(action_type="PASS", used_fallback=True, fallback_reason=reason)

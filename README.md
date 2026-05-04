@@ -213,16 +213,22 @@ OpenAI-модели используются только если пользо�
 
 ## Тестирование
 
-Тесты расположены внутри пакетов игр:
+Тесты расположены внутри пакетов игр и запускаются из директории `python`:
 
 ```bash
 cd python
+python3 -m pytest -q
 python3 -m pytest games/tictactoe/src/tests -v
 python3 -m pytest games/mafia/src/tests -v
 python3 -m pytest games/bunker/src/tests -v
 ```
 
-Текущее состояние тестов: часть набора требует донастройки импортов и доступного Ollama. `llm/tests/test_ollama_basic.py` выполняет реальный вызов Ollama при импорте, поэтому его стоит запускать только при поднятом Ollama.
+Интеграционную проверку Mafia API можно запустить при поднятом FastAPI:
+
+```bash
+cd python
+python3 games/mafia/src/tests/manual_mafia_llm_api_check.py
+```
 
 ---
 
@@ -234,20 +240,17 @@ python3 -m pytest games/bunker/src/tests -v
 
 ---
 
-## Статус проекта
+## Возможности платформы
 
-- [x] Tic-Tac-Toe 5x5: Python engine, агенты, API, визуализация.
-- [x] Mafia: C++ engine, Python endpoints для действий и чата агентов.
-- [x] Bunker: C++ engine, Python endpoints для действий и чата агентов.
-- [x] Telegram bot на C++.
-- [x] FastAPI gateway.
-- [x] Интеграция Ollama для локальных LLM.
-- [x] Частичная интеграция OpenAI через пользовательский API key.
-- [x] JSON-статистика бенчмарка.
-- [x] Docker Compose.
-- [ ] Стабильный общий pytest-прогон без ручной настройки окружения.
-- [ ] CI/CD.
-- [ ] Долговременное хранилище вместо JSON-файла статистики.
+- Tic-Tac-Toe 5x5: Python engine, агенты, API, визуализация.
+- Mafia: C++ engine, Python endpoints для действий и чата агентов.
+- Bunker: C++ engine, Python endpoints для действий и чата агентов.
+- Telegram bot на C++.
+- FastAPI gateway.
+- Интеграция Ollama для локальных LLM.
+- Интеграция OpenAI через пользовательский API key.
+- JSON-статистика бенчмарка с валидацией входных данных.
+- Docker Compose для совместного запуска API и Telegram-бота.
 
 ---
 

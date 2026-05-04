@@ -1,10 +1,9 @@
 import json
 import re
-import requests
 import os
-from typing import Optional
 
 from .base_agent import BaseAgent
+from games.common.llm_client import LLMClient
 
 class LLMAgent(BaseAgent):
     """
@@ -13,6 +12,9 @@ class LLMAgent(BaseAgent):
     def __init__(self, name: str = "LLMAgent", model: str = "gemma3"):
         super().__init__(name)
         self.model = model
+        self.client = LLMClient(provider="ollama", model=model)
+        self.last_used_fallback = False
+        self.last_fallback_reason = ""
 
     def build_prompt(self, board: list[list[str]], player_symbol: str) -> str:
         valid_moves = self._get_valid_moves(board)
@@ -44,64 +46,25 @@ class LLMAgent(BaseAgent):
             return (-1, -1)
             
         prompt = self.build_prompt(board, player_symbol)
-        
-        api_url = os.getenv("OLLAMA_API_URL", "http://host.docker.internal:11434/api/generate")
-        
+
+        result = self.client.call_result(prompt)
+        self.last_used_fallback = result.used_fallback
+        self.last_fallback_reason = result.fallback_reason
+
         try:
-            response = requests.post(
-                api_url,
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False
-                },
-                timeout=45
-            )
-            response.raise_for_status()
-            text = response.json().get("response", "")
-            
-            print(f"\n[{self.name} - LLM RAW RESPONSE | TicTacToe]:\n{text}\n{'-'*40}")
-            
-            # Поиск JSON внутри ответа
-            match = re.search(r'\{.*?\}', text, re.DOTALL)
+            match = re.search(r'\{.*?\}', result.text, re.DOTALL)
             if match:
                 data = json.loads(match.group(0))
                 row = data.get("row")
                 col = data.get("col")
                 if row is not None and col is not None:
-                    if (int(row), int(col)) in valid_moves:
-                        return (int(row), int(col))
-                
-            # Если LLM сгенерировала некорректный ход или JSON, делаем случайный-валидный "fallback"
-            print(f"LLM made bad move: {text}")
-            return valid_moves[0]
-            
-        except requests.exceptions.ConnectionError:
-            print(f"Error: Unable to connect to Ollama at {api_url}.")
-            # Fallback к localhost на случай запуска без Docker
-            if "host.docker.internal" in api_url:
-                print("Trying fallback to localhost...")
-                try:
-                    response = requests.post(
-                        "http://localhost:11434/api/generate",
-                        json={"model": self.model, "prompt": prompt, "stream": False},
-                        timeout=45
-                    )
-                    response.raise_for_status()
-                    text = response.json().get("response", "")
-                    match = re.search(r'\{.*?\}', text, re.DOTALL)
-                    if match:
-                        data = json.loads(match.group(0))
-                        row = data.get("row")
-                        col = data.get("col")
-                        if row is not None and col is not None:
-                            if (int(row), int(col)) in valid_moves:
-                                return (int(row), int(col))
-                except Exception as fallback_err:
-                    print(f"Fallback Error: {fallback_err}")
-                    pass
+                    move = (int(row), int(col))
+                    if move in valid_moves:
+                        return move
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
 
-            return valid_moves[0]
-        except Exception as e:
-            print(f"[LLM Agent Error] {e}")
-            return valid_moves[0]
+        self.last_used_fallback = True
+        if not self.last_fallback_reason:
+            self.last_fallback_reason = "invalid_llm_move"
+        return valid_moves[0]

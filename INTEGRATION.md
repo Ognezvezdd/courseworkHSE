@@ -133,20 +133,25 @@ OLLAMA_HOST=0.0.0.0 ollama serve
 ollama pull gemma3
 ```
 
-В Docker Python API обращается к Ollama по `http://host.docker.internal:11434/api/generate`. Локально Python пробует тот же адрес и в некоторых агентах fallback на `http://localhost:11434/api/generate`.
+В Docker Python API обращается к Ollama по `http://host.docker.internal:11434/api/generate`. При локальном запуске общий LLM-клиент автоматически пробует `http://localhost:11434/api/generate`, если основной endpoint недоступен.
 
-## Текущее состояние тестов
+## Тестирование
 
-Тесты находятся не в одной папке `tests`, а внутри пакетов игр:
+Тесты находятся внутри пакетов игр:
 
 ```bash
 cd python
+python3 -m pytest -q
 python3 -m pytest games/tictactoe/src/tests -v
 python3 -m pytest games/mafia/src/tests -v
 python3 -m pytest games/bunker/src/tests -v
 ```
 
-Полный pytest-прогон пока требует доработки импортов и изоляции LLM-тестов. `python/llm/tests/test_ollama_basic.py` выполняет реальный запрос к Ollama при импорте.
+Ручная интеграционная проверка Mafia API:
+
+```bash
+python3 games/mafia/src/tests/manual_mafia_llm_api_check.py
+```
 
 ## Секреты
 

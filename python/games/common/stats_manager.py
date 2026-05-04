@@ -26,8 +26,9 @@ StatsManager — хранит статистику бенчмарка в JSON-ф
 
 import json
 import os
+import tempfile
 import threading
-from typing import Dict, List
+from typing import List
 
 STATS_FILE = os.path.join(os.path.dirname(__file__), "../../output/benchmark_stats.json")
 _lock = threading.Lock()
@@ -39,14 +40,18 @@ def _load() -> dict:
     try:
         with open(STATS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
-        return {"bunker": {}, "mafia": {}, "tictactoe": {}}
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Stats file is corrupted: {STATS_FILE}") from exc
 
 
 def _save(data: dict):
-    os.makedirs(os.path.dirname(STATS_FILE), exist_ok=True)
-    with open(STATS_FILE, "w", encoding="utf-8") as f:
+    stats_dir = os.path.dirname(STATS_FILE)
+    os.makedirs(stats_dir, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix="benchmark_stats_", suffix=".json", dir=stats_dir)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    os.replace(tmp_path, STATS_FILE)
 
 
 def _is_valid_agent_name(name: str) -> bool:

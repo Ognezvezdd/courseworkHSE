@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from games.tictactoe.src.agents.heuristic_agent import HeuristicAgent
 from games.tictactoe.src.agents.qlearning_agent import QLearningAgent
@@ -62,6 +62,7 @@ class GameResult(BaseModel):
     slides: List[Dict[str, Any]]
     image_url: Optional[str] = None
     image_filename: Optional[str] = None
+    llm_fallbacks: Dict[str, str] = Field(default_factory=dict)
 
 class TrainResult(BaseModel):
     success: bool
@@ -118,7 +119,13 @@ async def play_game(request: GameRequest):
         steps=len(slides),
         slides=slides,
         image_url=image_url,
-        image_filename=img_filename
+        image_filename=img_filename,
+        llm_fallbacks={
+            "X": getattr(agent_x, "last_fallback_reason", "")
+            if getattr(agent_x, "last_used_fallback", False) else "",
+            "O": getattr(agent_o, "last_fallback_reason", "")
+            if getattr(agent_o, "last_used_fallback", False) else "",
+        }
     )
 
 @app.post("/train", response_model=TrainResult)

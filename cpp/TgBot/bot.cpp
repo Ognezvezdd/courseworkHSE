@@ -45,8 +45,8 @@ string TelegramBot::makeRequest(const string &method, const string &params) {
   cout << "🌐 Запрос: " << method << endl;
 
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
 
   struct curl_slist *headers = NULL;
   if (!params.empty()) {
@@ -174,8 +174,8 @@ void TelegramBot::uploadPhoto(int64_t chat_id, const string &file_path,
 
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
 
   string response;
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);

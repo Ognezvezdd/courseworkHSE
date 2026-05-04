@@ -36,4 +36,5 @@ class BunkerAction(BaseModel):
     action_type: str  # VOTE_EXILE or PASS
     target_id: int = -1
     text_message: str = ""
-
+    used_fallback: bool = False
+    fallback_reason: str = ""
